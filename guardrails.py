@@ -35,6 +35,7 @@ class Incoming:
     is_own: bool = False
     mention_ids: tuple = ()     # alle erwähnten Nutzer/Bots
     author_name: str = ""
+    msg_id: int = 0
 
 
 @dataclass
@@ -57,6 +58,12 @@ class ChannelState:
     halted: bool = False        # Stopp oder Mensch hat dazwischengeredet
     last_own_text: str = ""
     context_after_id: int = 0   # !reset: Verlauf erst ab dieser Nachricht
+    summary: str = ""           # Zusammenfassung vor dem letzten Reset (optional als Startkontext)
+    dialog_start_id: int = 0    # Nachricht, mit der der letzte Dialog begann (für !speichern)
+    dialog_topic: str = ""
+    pending_start_id: int = 0
+    pending_ts: float = 0.0
+    dialog_title: str = ""
 
 
 def no(reason: str) -> Decision:
@@ -143,6 +150,10 @@ class Guard:
                 st.bot_turns = 0
                 st.halted = False
                 st.last_human_ts = self.clock()
+                # Startpunkt fürs Speichern: die auslösende Menschen-Nachricht (≤ 2 min alt), sonst die Eröffnung.
+                recent = st.pending_start_id and self.clock() - st.pending_ts < 120
+                st.dialog_start_id = st.pending_start_id if recent else m.msg_id
+                st.dialog_title = st.dialog_topic if recent else ""
             st.bot_turns += 1
             if m.is_own:
                 st.last_own_text = strip_footer(m.content)
@@ -150,9 +161,12 @@ class Guard:
                 st.in_dialog = True
             return
 
-        # Ein Mensch schreibt.
+        # Ein Mensch schreibt – merken, falls daraus ein Dialog wird (Frage gehört mit in die Datei).
         st.bot_turns = 0
         st.last_human_ts = self.clock()
+        st.pending_start_id, st.pending_ts = m.msg_id, self.clock()
+        t = re.sub(r"<@!?\d+>", "", m.content).strip()
+        st.dialog_topic = re.sub(rf"^{re.escape(self.prefix())}dialog\s*(\d+\s*)?", "", t, flags=re.I).strip()[:120]
         if self.is_stop(m.content):
             st.halted = True
             st.in_dialog = False

@@ -42,10 +42,10 @@ class LLM:
         self._sig = sig
         return provider, self._client
 
-    async def complete(self, system: str, messages: list[dict]):
-        """Gibt (text, input_tokens, output_tokens) zurück."""
+    async def complete(self, system: str, messages: list[dict], use_knowledge: bool = True):
+        """Gibt (text, input_tokens, output_tokens) zurück. use_knowledge=False: ohne Wissens-Werkzeuge."""
         if self.cfg.get("llm.provider", "anthropic") == "claude_code":
-            return await self._claude_code(system, messages)
+            return await self._claude_code(system, messages, use_knowledge)
 
         provider, client = self._client_for()
         model = self.cfg.get("llm.model")
@@ -53,7 +53,7 @@ class LLM:
         temperature = self.cfg.get("llm.temperature")
         extra = {} if temperature is None else {"temperature": float(temperature)}
         import knowledge
-        reader = knowledge.reader(self.cfg)          # Wissensordner/Repos → Lese-Werkzeuge
+        reader = knowledge.reader(self.cfg) if use_knowledge else None   # Wissensordner/Repos → Lese-Werkzeuge
         rounds = int(self.cfg.get("knowledge.max_tool_rounds", 6) or 6)
 
         if provider == "anthropic":
@@ -136,7 +136,7 @@ class LLM:
             cmd += ["--allowedTools", ",".join(allowed)]
         return cmd
 
-    async def _claude_code(self, system: str, messages: list[dict]):
+    async def _claude_code(self, system: str, messages: list[dict], use_knowledge: bool = True):
         workdir = Path(self.cfg.get("claude_code.workdir", "./claude-sandbox")).resolve()
         workdir.mkdir(parents=True, exist_ok=True)
         timeout = float(self.cfg.get("claude_code.timeout_seconds", 180))
@@ -145,7 +145,7 @@ class LLM:
         with tempfile.NamedTemporaryFile("w", suffix=".md", delete=False, encoding="utf-8") as f:
             f.write(system)
             system_file = f.name
-        knowledge_config = knowledge.write_mcp_config(self.cfg, dict(os.environ))
+        knowledge_config = knowledge.write_mcp_config(self.cfg, dict(os.environ)) if use_knowledge else None
         try:
             proc = await asyncio.create_subprocess_exec(
                 *self.claude_code_command(system_file, knowledge_config),

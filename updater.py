@@ -35,8 +35,8 @@ BACKUP_DIR = ".update-sicherung"
 MODES = ["manuell", "hinweis", "automatisch"]
 RESTART_CODE = 75            # Startskripte schließen ihr Fenster bei diesem Code, statt auf eine Taste zu warten
 
-PROTECTED_DIRS = {".git", ".venv", BACKUP_DIR, "claude-sandbox", "__pycache__", "dist", "build", "wissen-cache"}
-PROTECTED_FILE = re.compile(r"^(\.env.*|config\.yaml.*|.*\.overrides\.json|.*\.status\.json|.*\.budget\.json|.*\.log)$", re.I)
+PROTECTED_DIRS = {".git", ".venv", BACKUP_DIR, "claude-sandbox", "__pycache__", "dist", "build", "wissen-cache", "verlauf"}
+PROTECTED_FILE = re.compile(r"^(\.env.*|config\.yaml.*|.*\.overrides\.json|.*\.status\.json|.*\.budget\.json|.*\.kontext\.json|.*\.log)$", re.I)
 
 
 class UpdateError(Exception):

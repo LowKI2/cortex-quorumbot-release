@@ -21,3 +21,5 @@ build/
 *.spec
 *.exe.alt
 wissen-cache/
+verlauf/
+*.kontext.json

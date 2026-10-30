@@ -14,7 +14,7 @@ class HistMsg:
     content: str
 
 
-def build_system(cfg, d: Decision) -> str:
+def build_system(cfg, d: Decision, summary: str = "") -> str:
     name = (cfg.get("bot.name") or "Claude")
     owner = (cfg.get("bot.owner_name") or "mein Besitzer")
     partner = (cfg.get("bot.partner_name") or "die andere KI")
@@ -41,6 +41,8 @@ def build_system(cfg, d: Decision) -> str:
     import knowledge
     rules += knowledge.prompt_rules(cfg)
     parts = [persona, "## Regeln", *[f"- {r}" for r in rules]] if persona else ["## Regeln", *[f"- {r}" for r in rules]]
+    if summary:
+        parts += ["## Bisher (Zusammenfassung vor dem letzten Reset)", summary.strip()[:4000]]
     return "\n".join(parts)
 
 

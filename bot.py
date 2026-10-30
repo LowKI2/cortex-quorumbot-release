@@ -31,7 +31,8 @@ HILFE = """**Befehle** (nur für meinen Besitzer)
 `{p}status` – Einstellungen und Budget
 `{p}set <schlüssel> <wert>` – Einstellung ändern, z. B. `{p}set llm.temperature 0.5`
 `{p}unset <schlüssel>` – zurück auf den Wert aus der config.yaml
-`{p}reset` – Gesprächsverlauf ab hier neu beginnen
+`{p}reset` – Verlauf zurücksetzen (bei beiden Bots; je nach Einstellung vorher zusammenfassen und speichern)
+`{p}speichern` – den letzten Dialog als Datei speichern
 `{p}hilfe` – diese Übersicht"""
 
 
@@ -58,6 +59,12 @@ class RundenBot(discord.Client):
         self.cfg = cfg
         self.guard = Guard(cfg)
         self.budget = Budget(cfg, cfg.path.with_name(cfg.path.stem + ".budget.json"))
+        import verlauf
+        self.context_store = verlauf.ContextStore(cfg.path.with_name(cfg.path.stem + ".kontext.json"))
+        for cid, v in self.context_store.data.items():      # Reset-Stand nach Neustart wiederherstellen
+            st = self.guard.state(int(cid))
+            st.context_after_id = int(v.get("after_id") or 0)
+            st.summary = v.get("summary") or ""
         self.llm = LLM(cfg)
         self.locks: dict[int, asyncio.Lock] = defaultdict(asyncio.Lock)
         self.tree = app_commands.CommandTree(self)
@@ -136,10 +143,22 @@ class RundenBot(discord.Client):
             mentions_me=self.user.id in mentioned,
             is_own=message.author.id == self.user.id,
             mention_ids=tuple(mentioned),
+            msg_id=message.id,
             author_name=getattr(message.author, "display_name", "") or message.author.name,
         )
         self.guard.observe(inc)
+        import verlauf
+        if inc.author_is_bot and verlauf.is_dialog_end(message.content) and self.cfg.get("context.dialog_save", False) \
+                and self.guard.channel_allowed(message.channel.id) and (inc.is_own or inc.author_id in self.guard.partner_ids()):
+            self.loop.create_task(self.save_dialog(message.channel, message.id, auto=True))
         if inc.is_own:
+            return
+
+        if (inc.author_is_bot and inc.author_id in self.guard.partner_ids() and verlauf.is_reset_start(message.content)
+                and self.guard.channel_allowed(message.channel.id) and self.cfg.get("context.reset_follow_partner", True)):
+            log.info("Partner setzt Verlauf zurück – mache mit")
+            async with self.locks[message.channel.id]:
+                await self.reset_context(message.channel, message.id, initiator=False)
             return
 
         if not inc.author_is_bot and inc.author_id == int(self.cfg.get("bot.owner_id", 0)):
@@ -175,7 +194,7 @@ class RundenBot(discord.Client):
         try:
             async with ch.typing():
                 history, names = await self.fetch_history(ch, st.context_after_id)
-                system = build_system(self.cfg, d)
+                system = build_system(self.cfg, d, summary=st.summary)
                 msgs = build_messages(history, self.user.id, names)
                 text, tin, tout = await self.llm.complete(system, msgs)
         except Exception as e:  # noqa: BLE001
@@ -201,11 +220,69 @@ class RundenBot(discord.Client):
             parts.append(f"\n-# Runde {d.turn}/{d.limit}{ende}")
         await ch.send("".join(parts)[:1990])
 
-    async def fetch_history(self, ch, after_id: int):
+    async def save_dialog(self, ch, until_id: int, auto: bool):
+        """Letzten Dialog (ab seiner Eröffnung) als Markdown speichern – ohne KI, kostet nichts."""
+        import verlauf
+        st = self.guard.state(ch.id)
+        name = self.cfg.get("bot.name") or "Bot"
+        if not st.dialog_start_id:
+            if not auto:
+                await ch.send(f"-# {name}: Kein Dialog seit dem Start des Bots gefunden.")
+            return
+        try:
+            history, names = await self.fetch_history(ch, st.dialog_start_id - 1, before_id=until_id + 1, raw=True)
+            text = verlauf.transcript(history, names, keep_commands=True)
+            if not text.strip():
+                return
+            path = verlauf.save_dialog(self.cfg, getattr(ch, "name", str(ch.id)), st.dialog_title, text)
+        except Exception as e:  # noqa: BLE001
+            log.exception("Dialog speichern fehlgeschlagen")
+            if not auto:
+                await ch.send(f"⚠️ {name}: Dialog speichern fehlgeschlagen ({type(e).__name__}).")
+            return
+        log.info("Dialog gespeichert: %s", path)
+        await ch.send(f"-# 💾 {name}: Dialog gespeichert ({verlauf.rel(self.cfg, path)})")
+
+    async def reset_context(self, ch, after_id: int, initiator: bool):
+        """Verlauf zurücksetzen – bei „Speichern“ vorher zusammenfassen und als Datei ablegen."""
+        import verlauf
+        st = self.guard.state(ch.id)
+        name = self.cfg.get("bot.name") or "Bot"
+        marker = verlauf.RESET_START if initiator else verlauf.RESET_ACK
+        summary = ""
+        if self.cfg.get("context.reset_save", False):
+            try:
+                history, names = await self.fetch_history(ch, st.context_after_id, before_id=after_id)
+                raw = verlauf.transcript(history, names)
+                if raw.strip():
+                    async with ch.typing():
+                        summary, tin, tout = await self.llm.complete(
+                            verlauf.SUMMARY_SYSTEM, [{"role": "user", "content": raw}], use_knowledge=False)
+                    self.budget.record(tin + tout)
+                    path = verlauf.save(self.cfg, getattr(ch, "name", str(ch.id)), summary,
+                                        raw if self.cfg.get("context.reset_raw", False) else None)
+                    note = f"✅ {name}: Verlauf zusammengefasst und gespeichert ({verlauf.rel(self.cfg, path)}) – Kontext ist neu."
+                else:
+                    note = f"✅ {name}: Nichts zu speichern (Verlauf war leer) – Kontext ist neu."
+            except Exception as e:  # noqa: BLE001
+                log.exception("Speichern beim Reset fehlgeschlagen")
+                await ch.send(f"⚠️ {name}: Zusammenfassen/Speichern fehlgeschlagen ({type(e).__name__}) – Verlauf bleibt.")
+                return
+        else:
+            note = f"{name}: " + (self.cfg.get("context.reset_no_save_text") or verlauf.DEFAULT_NO_SAVE)
+        carry = summary if (summary and self.cfg.get("context.reset_carry_summary", True)) else ""
+        st.context_after_id, st.summary = after_id, carry
+        st.bot_turns, st.in_dialog = 0, False
+        self.context_store.set(ch.id, after_id=after_id, summary=carry)
+        await ch.send(f"{note}\n{marker}"[:1990])
+
+    async def fetch_history(self, ch, after_id: int, before_id: int | None = None, raw: bool = False):
         limit = int(self.cfg.get("context.max_messages", 30))
-        kwargs = {"limit": limit, "oldest_first": False}
+        kwargs = {"limit": limit if before_id is None else max(limit, 300), "oldest_first": False}
         if after_id:
             kwargs["after"] = discord.Object(id=after_id)
+        if before_id:
+            kwargs["before"] = discord.Object(id=before_id)
         msgs = [m async for m in ch.history(**kwargs)]
         msgs.reverse()
         names: dict[int, str] = {}
@@ -217,7 +294,8 @@ class RundenBot(discord.Client):
         hist = [
             HistMsg(m.author.id, names[m.author.id], m.content)
             for m in msgs
-            if not (m.content.strip().startswith(prefix) and not m.content.strip()[len(prefix):].startswith("dialog"))
+            if raw or (not (m.content.strip().startswith(prefix) and not m.content.strip()[len(prefix):].startswith("dialog"))
+                       and "-# Kontext-Reset" not in m.content and "Dialog gespeichert" not in m.content)
         ]
         return hist, names
 
@@ -247,8 +325,10 @@ class RundenBot(discord.Client):
             self.cfg.unset(args.strip())
             await ch.send(f"✓ `{args.strip()}` zurückgesetzt")
         elif cmd == "reset":
-            self.guard.state(ch.id).context_after_id = message.id
-            await ch.send("✓ Verlauf ab hier neu")
+            async with self.locks[ch.id]:
+                await self.reset_context(ch, message.id, initiator=True)
+        elif cmd in ("speichern", "save"):
+            await self.save_dialog(ch, message.id, auto=False)
         else:
             await ch.send(f"Unbekannter Befehl. `{p}hilfe` zeigt alle.")
 
