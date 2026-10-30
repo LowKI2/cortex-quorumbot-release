@@ -1,6 +1,8 @@
 """Beschreibung aller Einstellungen – genutzt vom Web-Konfigurator und den Slash-Befehlen."""
 from __future__ import annotations
 
+import re
+
 from config import DEFAULT_SETTABLE
 from guardrails import HARD_MAX_MINUTES, HARD_MAX_ROUNDS, HARD_MIN_COOLDOWN
 
@@ -79,6 +81,18 @@ SECTIONS = [
         {"key": "guardrails.max_tokens_per_day", "label": "Tokens pro Tag", "type": "int", "min": 1000,
          "max": 50_000_000, "default": 300_000},
     ]),
+    ("Voice-Melder", [
+        {"key": "voice_notifier.enabled", "label": "Voice-Melder aktiv", "type": "bool", "default": False,
+         "help": "Meldet im Textkanal, wenn jemand einen überwachten Sprachraum betritt. Ohne KI. Pro Server nur in EINEM Bot einschalten, sonst doppelte Meldungen."},
+        {"key": "voice_notifier.watch", "label": "Sprachraum → Textkanal", "type": "pairs", "show_if": {"voice_notifier.enabled": [True]},
+         "help": "Eine Zeile pro Paar: Sprachraum-ID = Textkanal-ID. Mehrere Paare und Server möglich. Bot braucht im Textkanal „Kanal ansehen“ und „Nachrichten senden“."},
+        {"key": "voice_notifier.cooldown_seconds", "label": "Pause pro Person und Raum (s)", "type": "int", "min": 0, "max": 3600,
+         "default": 60, "show_if": {"voice_notifier.enabled": [True]}, "help": "Raus und gleich wieder rein wird innerhalb dieser Zeit nicht erneut gemeldet."},
+        {"key": "voice_notifier.template", "label": "Nachricht", "type": "text", "default": "🎙️ {name} ist in <#{channel}>.",
+         "show_if": {"voice_notifier.enabled": [True]}, "help": "{name} = Anzeigename, {channel} = Sprachraum (als Link), {channel_name} = Name als Text. Pings werden nie ausgelöst."},
+        {"key": "voice_notifier.disabled_guilds", "label": "Server ohne Melder", "type": "idlist", "show_if": {"voice_notifier.enabled": [True]},
+         "advanced": True, "help": "Server-IDs, in denen dieser Bot nicht meldet (z. B. weil dort schon ein anderer Bot meldet)."},
+    ]),
     ("Chat-Rechte", [
         {"key": "guardrails.settable_keys", "label": "Per Chat änderbar (!set und Slash-Befehle)", "type": "checklist",
          "options": DEFAULT_SETTABLE, "default": DEFAULT_SETTABLE},
@@ -127,6 +141,21 @@ def to_value(field: dict, raw):
         if not s.isdigit() or not 15 <= len(s) <= 21:
             raise ValueError(f"{label}: keine gültige Discord-ID ({s})")
         return int(s)
+    if t == "pairs":
+        if isinstance(raw, dict):
+            items = [f"{k} = {v}" for k, v in raw.items()]
+        else:
+            items = raw if isinstance(raw, list) else str(raw or "").splitlines()
+        out = {}
+        for line in items:
+            line = str(line).strip()
+            if not line or line.startswith("#"):
+                continue
+            parts = [p for p in re.split(r"\s*(?:=|->|→|:|\s)\s*", line) if p]
+            if len(parts) != 2 or not all(p.isdigit() and 15 <= len(p) <= 21 for p in parts):
+                raise ValueError(f"{label}: Zeile „{line}“ – Format: Sprachraum-ID = Textkanal-ID")
+            out[int(parts[0])] = int(parts[1])
+        return out
     if t in ("idlist", "list", "checklist"):
         items = raw if isinstance(raw, list) else str(raw or "").replace(",", "\n").splitlines()
         items = [str(i).strip() for i in items if str(i).strip()]
@@ -161,4 +190,12 @@ def check_consistency(get) -> tuple[list[str], list[str]]:
     owner = get("bot.owner_id")
     if owner and owner in (get("bot.partner_bot_ids") or []):
         errors.append("Deine User-ID steht auch als Partner-Bot drin.")
+    if get("voice_notifier.enabled"):
+        if not get("voice_notifier.watch"):
+            warnings.append("Voice-Melder ist an, aber es ist kein Sprachraum → Textkanal eingetragen.")
+        tpl = get("voice_notifier.template") or ""
+        try:
+            tpl.format(name="x", channel=1, channel_name="x")
+        except (KeyError, IndexError, ValueError):
+            errors.append("Voice-Melder: Vorlage fehlerhaft – erlaubt sind {name}, {channel}, {channel_name}.")
     return errors, warnings

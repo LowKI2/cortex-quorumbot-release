@@ -59,3 +59,12 @@ guardrails:
   max_requests_per_hour: 60         # beim Abo die wichtigste Bremse fürs Kontingent
   max_tokens_per_day: 300000
   # settable_keys: [...]            # optional: welche Schlüssel per !set änderbar sind
+
+# Voice-Join-Melder – postet, wenn jemand einen überwachten Sprachraum betritt. Ohne KI.
+# Pro Server nur in EINEM Bot aktivieren, sonst doppelte Meldungen.
+voice_notifier:
+  enabled: false
+  watch: {}                          # Sprachraum-ID: Textkanal-ID, z. B. 111111111111111111: 222222222222222222
+  cooldown_seconds: 60
+  template: "🎙️ {name} ist in <#{channel}>."
+  disabled_guilds: []

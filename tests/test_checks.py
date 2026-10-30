@@ -111,3 +111,22 @@ def test_run_all_ohne_key_ueberspringt_anfrage():
 
 def test_basis():
     assert check_python().status == "ok" and check_packages().status == "ok"
+
+
+def test_voice_melder_pruefung():
+    from checks import notifier_checks
+    V, T = "111111111111111111", "222222222222222222"
+
+    def get(url, headers=None, timeout=10):
+        if url.endswith(f"/channels/{V}"):
+            return 200, {"name": "Lounge", "type": 2}
+        if url.endswith(f"/channels/{T}"):
+            return 200, {"name": "runde", "type": 0}
+        return 404, None
+    on = cfg(voice_notifier__enabled=True, voice_notifier__watch={int(V): int(T)})
+    r = notifier_checks(on, "tok", get=get)
+    assert r[0].status == "ok" and "Lounge" in r[0].detail and "runde" in r[0].detail
+    swapped = cfg(voice_notifier__enabled=True, voice_notifier__watch={int(T): int(V)})
+    assert notifier_checks(swapped, "tok", get=get)[0].status == "fail"          # Textkanal links = kein Sprachraum
+    assert notifier_checks(cfg(voice_notifier__enabled=True), "tok", get=get)[0].status == "warn"
+    assert notifier_checks(cfg(), "tok", get=get) == []

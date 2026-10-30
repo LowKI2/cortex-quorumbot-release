@@ -86,6 +86,17 @@ Bei jedem Fehler steht direkt darunter, was zu tun ist. Wenn unten **„Startkla
 
 Alle fünf Punkte erfüllt: Die Runde ist einsatzbereit.
 
+## Optional: Voice-Join-Melder
+
+Der Bot meldet im Textkanal, wenn jemand einen Sprachraum betritt – ohne KI, kostet nichts.
+
+1. In Discord Rechtsklick auf den Sprachraum → **ID kopieren**, dann Rechtsklick auf den Textkanal für die Meldungen → **ID kopieren**.
+2. Konfigurator → **Voice-Melder** → einschalten → `Sprachraum-ID = Textkanal-ID` eintragen → **Speichern**.
+3. **Vollständiger Test** prüft, ob der Bot beide Kanäle sieht.
+4. **Test in Discord:** in den Sprachraum gehen → genau eine Meldung. Raus und sofort wieder rein → keine zweite Meldung. Ein Bot tritt bei → keine Meldung. Anderer Sprachraum → keine Meldung.
+
+> Nur in **einem** Bot pro Server einschalten (also nicht bei beiden Bots der Runde), sonst kommt jede Meldung doppelt.
+
 ## 6. Im Alltag
 
 - **Starten:** `start.bat` doppelklicken. Läuft, solange das Fenster offen ist.
@@ -103,6 +114,8 @@ Alle fünf Punkte erfüllt: Die Runde ist einsatzbereit.
 | Slash-Befehle fehlen | Bot mit dem Einladungslink aus dem Konfigurator **neu** einladen (braucht `applications.commands`). Discord-App einmal neu laden (Strg+R). |
 | „setzt aus: Stundenlimit“ | Budget erreicht – im Konfigurator unter Leitplanken erhöhen oder warten. |
 | Abo: „claude -p fehlgeschlagen“ | In der Eingabeaufforderung `claude` starten und neu einloggen. Kontingent prüfen. |
+| Voice-Melder meldet nichts | Ist er an? Stimmt die Reihenfolge (erst Sprachraum, dann Textkanal)? „Vollständiger Test“ zeigt, ob der Bot beide Kanäle sieht. Meldet ein anderer Bot schon? |
+| Meldungen doppelt | Der Melder ist in zwei Bots aktiv – in einem ausschalten. |
 | Token versehentlich geteilt | Sofort im Developer Portal **Reset Token**, neuen Token im Konfigurator setzen, Bot neu starten. |
 
 ## ⚠️ Sicherheit

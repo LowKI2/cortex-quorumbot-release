@@ -155,6 +155,37 @@ def discord_checks(cfg, token: str, get=http_get) -> list[Result]:
     return out
 
 
+# --- Voice-Melder --------------------------------------------------------
+def notifier_checks(cfg, token: str, get=http_get) -> list[Result]:
+    if not cfg.get("voice_notifier.enabled"):
+        return []
+    watch = cfg.get("voice_notifier.watch") or {}
+    if not watch:
+        return [Result("Voice-Melder", "warn", "an, aber kein Sprachraum eingetragen",
+                       "Im Konfigurator unter Voice-Melder: Sprachraum-ID = Textkanal-ID eintragen.")]
+    if not token:
+        return [Result("Voice-Melder", "skip", "ohne Discord-Token nicht prüfbar")]
+    auth = {"Authorization": f"Bot {token}"}
+    out = []
+    for voice_id, text_id in watch.items():
+        st, v = get(f"{DISCORD_API}/channels/{voice_id}", auth)
+        st2, t = get(f"{DISCORD_API}/channels/{text_id}", auth)
+        name = f"Voice-Melder {voice_id}"
+        if st != 200 or not isinstance(v, dict):
+            out.append(Result(name, "fail", "Sprachraum nicht gefunden oder nicht sichtbar",
+                              "ID prüfen (Rechtsklick auf den Sprachraum → ID kopieren) und dem Bot „Kanal ansehen“ erlauben."))
+            continue
+        if v.get("type") not in (2, 13):
+            out.append(Result(name, "fail", f"#{v.get('name')} ist kein Sprachraum", "Links muss die ID eines Sprachraums stehen."))
+            continue
+        if st2 != 200 or not isinstance(t, dict):
+            out.append(Result(name, "fail", f"🔊 {v.get('name')} → Textkanal nicht sichtbar",
+                              "Textkanal-ID prüfen und dem Bot dort „Kanal ansehen“ und „Nachrichten senden“ erlauben."))
+            continue
+        out.append(Result(name, "ok", f"🔊 {v.get('name')} → #{t.get('name')}"))
+    return out
+
+
 # --- Modell -------------------------------------------------------------
 def claude_cli_check(cfg, run=subprocess.run) -> Result:
     exe = cfg.get("claude_code.path", "claude")
@@ -230,7 +261,9 @@ def run_all(cfg, env: dict, with_request: bool = True, get=http_get) -> list[Res
         res.append(Result("Konfiguration", "ok", "gültig"))
     res += [Result("Hinweis", "warn", w) for w in warnings]
 
-    res += discord_checks(cfg, env.get(cfg.get("discord.token_env", "DISCORD_TOKEN"), ""), get=get)
+    token = env.get(cfg.get("discord.token_env", "DISCORD_TOKEN"), "")
+    res += discord_checks(cfg, token, get=get)
+    res += notifier_checks(cfg, token, get=get)
 
     provider = cfg.get("llm.provider", "anthropic")
     if provider == "claude_code":

@@ -21,6 +21,7 @@ from config import Config
 from guardrails import Budget, Decision, Guard, Incoming
 from llm import LLM
 from prompting import HistMsg, build_messages, build_system
+from voice_notifier import attach_voice_notifier
 
 log = logging.getLogger("runde")
 
@@ -38,6 +39,7 @@ class RundenBot(discord.Client):
     def __init__(self, cfg: Config):
         intents = discord.Intents.default()
         intents.message_content = True
+        intents.voice_states = True          # für den Voice-Join-Melder (nicht privilegiert)
         super().__init__(
             intents=intents,
             allowed_mentions=discord.AllowedMentions(everyone=False, roles=False, users=True, replied_user=False),
@@ -49,6 +51,13 @@ class RundenBot(discord.Client):
         self.locks: dict[int, asyncio.Lock] = defaultdict(asyncio.Lock)
         self.tree = app_commands.CommandTree(self)
         self._synced = False
+        attach_voice_notifier(self, self._notifier_config)
+
+    def _notifier_config(self) -> dict:
+        """Melder-Einstellungen aus config.yaml (+ Chat-Werte), live neu geladen."""
+        self.cfg.reload_if_changed()
+        keys = ("enabled", "watch", "disabled_guilds", "cooldown_seconds", "template")
+        return {k: self.cfg.get(f"voice_notifier.{k}") for k in keys if self.cfg.get(f"voice_notifier.{k}") is not None}
 
     async def setup_hook(self):
         from slash import setup_slash

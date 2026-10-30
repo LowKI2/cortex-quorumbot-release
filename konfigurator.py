@@ -124,6 +124,8 @@ class Store:
                 values[k] = f["default"]
             if f["type"] in ("id",) and values[k] is not None:
                 values[k] = str(values[k]) if values[k] else None   # große IDs nie als JS-Zahl; 0 = Platzhalter
+            if f["type"] == "pairs":
+                values[k] = [f"{a} = {b}" for a, b in (values[k] or {}).items()]
             if f["type"] == "idlist" and values[k]:
                 values[k] = [str(x) for x in values[k] if x]
         env = read_env(self.env_path)

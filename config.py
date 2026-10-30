@@ -15,6 +15,7 @@ DEFAULT_SETTABLE = [
     "guardrails.dialog_default_rounds", "guardrails.dialog_max_rounds",
     "guardrails.dialog_max_minutes", "guardrails.cooldown_seconds",
     "guardrails.max_requests_per_hour", "guardrails.max_tokens_per_day",
+    "voice_notifier.enabled", "voice_notifier.cooldown_seconds",
 ]
 
 

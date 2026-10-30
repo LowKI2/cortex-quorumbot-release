@@ -124,3 +124,18 @@ def test_platzhalter_ids_aus_alter_vorlage_gelten_als_leer(tmp_path):
     st = s.state()
     assert st["values"]["bot.owner_id"] is None and st["values"]["bot.partner_bot_ids"] == []
     assert s.save({"bot.owner_id": OWNER, "bot.partner_bot_ids": st["values"]["bot.partner_bot_ids"]}, draft=True)["ok"]
+
+
+def test_voice_melder_paare_speichern_und_anzeigen(tmp_path):
+    import yaml
+    s = store(tmp_path)
+    r = s.save({"bot.owner_id": OWNER, "voice_notifier.enabled": True,
+                "voice_notifier.watch": "111111111111111111 = 222222222222222222\n333333333333333333 → 444444444444444444"})
+    assert r["ok"], r
+    data = yaml.safe_load((tmp_path / "config.yaml").read_text(encoding="utf-8"))
+    assert data["voice_notifier"]["watch"] == {111111111111111111: 222222222222222222, 333333333333333333: 444444444444444444}
+    assert s.state()["values"]["voice_notifier.watch"] == ["111111111111111111 = 222222222222222222", "333333333333333333 = 444444444444444444"]
+    bad = s.save({"voice_notifier.watch": "123 = abc"})
+    assert not bad["ok"] and "voice_notifier.watch" in bad["field_errors"]
+    tpl = s.save({"voice_notifier.template": "{oops}"})
+    assert not tpl["ok"] and "Vorlage" in tpl["errors"][0]

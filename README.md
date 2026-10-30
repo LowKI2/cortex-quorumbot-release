@@ -2,7 +2,7 @@
 
 **Text- und Sprachbot für Discord** – eine Runde aus Menschen und KI-Bots, mit festen Leitplanken. Ein Werkzeug von BZi Studio.
 
-> **Status: Beta (v0.2.1).** Leitplanken und Abo-Anbindung sind automatisch getestet, der Betrieb mit zwei Bots in echtem Discord noch nicht. Bitte erst in einem eigenen Test-Server ausprobieren.
+> **Status: Beta (v0.3.0).** Leitplanken und Abo-Anbindung sind automatisch getestet, der Betrieb mit zwei Bots in echtem Discord noch nicht. Bitte erst in einem eigenen Test-Server ausprobieren.
 
 Gedacht für eine Runde aus zwei Menschen und zwei KIs. Jede Person betreibt **einen eigenen Bot** auf dem eigenen Rechner, mit eigenem API-Key **oder eigenem Claude-Abo**. Gleicher Code, eigene `config.yaml`.
 
@@ -76,6 +76,24 @@ Die Befehlsgruppe heißt wie dein Bot, also z. B. `/nova …` und `/kai …`. So
 
 Alles außer `stopp` nur für den Besitzer. Es gelten dieselben Prüfungen und Grenzen wie im Konfigurator. Was per Chat änderbar ist, legst du im Konfigurator unter „Chat-Rechte“ fest. Wurde der Bot ohne `applications.commands` eingeladen, einfach mit dem neuen Einladungslink nochmal einladen.
 
+## Voice-Join-Melder
+
+Eigenständiges Modul (`voice_notifier.py`), läuft **ohne KI**: Betritt jemand einen überwachten Sprachraum (oder wechselt hinein), postet der Bot in den zugeordneten Textkanal:
+
+> 🎙️ Max ist in 🔊 Lounge.
+
+- Im Konfigurator unter **Voice-Melder** einschalten und Paare eintragen: `Sprachraum-ID = Textkanal-ID` (eine Zeile pro Paar, mehrere Server möglich).
+- Verlassen wird nicht gemeldet, Bots werden ignoriert, Pings (@everyone, @here, Nutzer) werden nie ausgelöst.
+- Raus und gleich wieder rein wird innerhalb der Pause (Standard 60 s, pro Person und Raum) nicht erneut gemeldet.
+- Nachricht als Vorlage: `{name}`, `{channel}` (Sprachraum als Link), `{channel_name}`.
+- Fehlt der Textkanal oder das Schreibrecht, wird nur ins Log geschrieben – der Bot läuft weiter.
+- Per Chat schaltbar: `!set voice_notifier.enabled nein` bzw. `/nova set`.
+
+> ⚠️ **Pro Server darf der Melder nur in EINEM Bot aktiv sein** – sonst kommt jede Meldung doppelt (z. B. nicht bei Nova *und* Kai einschalten). Für einzelne Server abschaltbar unter „Erweitert → Server ohne Melder“.
+> Der Bot braucht im Ziel-Textkanal **Kanal ansehen** und **Nachrichten senden**; den Sprachraum muss er sehen können.
+
+Das Modul ist unabhängig vom Rest des Bots und lässt sich in jeden discord.py-Bot einhängen: `attach_voice_notifier(client, {"enabled": True, "watch": {VOICE_ID: TEXT_ID}})`.
+
 ## Text-Befehle (nur der Besitzer)
 
 | Befehl | Wirkung |
@@ -128,6 +146,7 @@ Werte aus `!set` landen in `config.overrides.json` und überleben einen Neustart
 - `konfigurator.py` + `konfigurator.html` – Weboberfläche
 - `slash.py` – Slash-Befehle und Panel
 - `checks.py` + `pruefen.py`/`pruefen.bat` – Selbsttest (auch im Konfigurator)
+- `voice_notifier.py` – Voice-Join-Melder, eigenständig und ohne KI
 - `settings_schema.py` – alle Einstellungen mit Typ, Grenzen und Hilfetext (gemeinsam für Konfigurator, `!set` und Slash)
 - `tests/` – `python -m pytest tests`
 
