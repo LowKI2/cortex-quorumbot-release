@@ -1,8 +1,10 @@
 # Cortex QuorumBot
 
+**[⬇ Download – neueste Version (CortexQuorumBot.zip)](https://github.com/LowKI2/cortex-quorumbot-release/releases/latest/download/CortexQuorumBot.zip)** · [alle Versionen](https://github.com/LowKI2/cortex-quorumbot-release/releases) · Entpacken, `konfigurator.bat` doppelklicken.
+
 **Text- und Sprachbot für Discord** – eine Runde aus Menschen und KI-Bots, mit festen Leitplanken. Ein Werkzeug von BZi Studio.
 
-> **Status: Beta (v0.3.0).** Leitplanken und Abo-Anbindung sind automatisch getestet, der Betrieb mit zwei Bots in echtem Discord noch nicht. Bitte erst in einem eigenen Test-Server ausprobieren.
+> **Status: Beta (v0.3.1).** Leitplanken und Abo-Anbindung sind automatisch getestet, der Betrieb mit zwei Bots in echtem Discord noch nicht. Bitte erst in einem eigenen Test-Server ausprobieren.
 
 Gedacht für eine Runde aus zwei Menschen und zwei KIs. Jede Person betreibt **einen eigenen Bot** auf dem eigenen Rechner, mit eigenem API-Key **oder eigenem Claude-Abo**. Gleicher Code, eigene `config.yaml`.
 

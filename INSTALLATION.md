@@ -11,15 +11,15 @@ Dauer: etwa 15 Minuten pro Person. Jeder Mensch in der Runde richtet **seinen ei
 - [ ] Ein **Discord-Konto** und einen **Server**, auf dem du Bots hinzufügen darfst. Für den ersten Test am besten einen eigenen, leeren Server anlegen (in Discord links auf **+** → **Eigenen erstellen**).
 - [ ] **Python 3.11 oder neuer** – <https://www.python.org/downloads/>. Beim Setup unbedingt **„Add python.exe to PATH“** anhaken.
 - [ ] Einen **Modellzugang**, eins davon:
-  - **Anthropic-API-Key** – <https://console.anthropic.com/settings/keys> (kostet pro Nutzung), oder
-  - **Claude-Abo** (Pro/Max) mit **Claude Code** – <https://claude.com/claude-code>, oder
-  - **Ollama** lokal – <https://ollama.com>
+    - **Anthropic-API-Key** – <https://console.anthropic.com/settings/keys> (kostet pro Nutzung), oder
+    - **Claude-Abo** (Pro/Max) mit **Claude Code** – <https://claude.com/claude-code>, oder
+    - **Ollama** lokal – <https://ollama.com>
 
 **Prüfen:** Eingabeaufforderung öffnen (Windows-Taste, `cmd`), `python --version` eingeben. Es muss `Python 3.11` oder höher erscheinen.
 
 ## 2. Herunterladen und entpacken
 
-1. Neueste Version laden: <https://github.com/LowKI2/cortex-quorumbot-release/releases> → `cortex-quorumbot-v….zip`.
+1. Neueste Version laden: **[⬇ CortexQuorumBot.zip](https://github.com/LowKI2/cortex-quorumbot-release/releases/latest/download/CortexQuorumBot.zip)** (alle Versionen: <https://github.com/LowKI2/cortex-quorumbot-release/releases>).
 2. Entpacken, z. B. nach `Dokumente\Cortex-QuorumBot`. Nicht in einen Ordner, der automatisch in die Cloud synchronisiert wird – dort landen später deine Zugangsdaten.
 
 ## 3. Konfigurator starten
@@ -102,7 +102,7 @@ Der Bot meldet im Textkanal, wenn jemand einen Sprachraum betritt – ohne KI, k
 - **Starten:** `start.bat` doppelklicken. Läuft, solange das Fenster offen ist.
 - **Einstellungen ändern:** `konfigurator.bat` – auch während der Bot läuft. Änderungen gelten ab der nächsten Nachricht. Nur ein neuer Discord-Token braucht einen Neustart.
 - **Prüfen:** `pruefen.bat` macht denselben Test wie der Assistent, ohne Browser.
-- **Update:** neue Version entpacken und `config.yaml`, `.env` und `config.overrides.json` aus dem alten Ordner hineinkopieren.
+- **Update:** neue Version laden ([⬇ CortexQuorumBot.zip](https://github.com/LowKI2/cortex-quorumbot-release/releases/latest/download/CortexQuorumBot.zip)), entpacken und `config.yaml`, `.env` und `config.overrides.json` aus dem alten Ordner hineinkopieren.
 
 ## 7. Wenn etwas nicht geht
 
