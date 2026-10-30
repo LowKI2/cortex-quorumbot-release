@@ -8,7 +8,7 @@
 
 **Text- und Sprachbot für Discord** – eine Runde aus Menschen und KI-Bots, mit festen Leitplanken. Ein Werkzeug von BZi Studio.
 
-> **Status: Beta (v0.8.1).** Leitplanken und Abo-Anbindung sind automatisch getestet, der Betrieb mit zwei Bots in echtem Discord noch nicht. Bitte erst in einem eigenen Test-Server ausprobieren.
+> **Status: Beta (v0.8.2).** Leitplanken und Abo-Anbindung sind automatisch getestet, der Betrieb mit zwei Bots in echtem Discord noch nicht. Bitte erst in einem eigenen Test-Server ausprobieren.
 
 Gedacht für eine Runde aus zwei Menschen und zwei KIs. Jede Person betreibt **einen eigenen Bot** auf dem eigenen Rechner, mit eigenem API-Key **oder eigenem Claude-Abo**. Gleicher Code, eigene `config.yaml`.
 
@@ -107,7 +107,7 @@ Der Konfigurator sucht nichts automatisch auf deinem Rechner – alle Angaben tr
 
 Damit der Kontext (und damit Kosten bzw. Kontingent) nicht immer weiter wächst:
 
-- **`!reset`** setzt den Verlauf zurück. Der Partner-Bot macht automatisch mit und bestätigt ebenfalls.
+- **`!reset`** setzt den Verlauf bei **beiden** Bots zurück – aber erst, wenn **beide Menschen** zugestimmt haben: Der Bot fragt im Kanal nach, der Besitzer des Partner-Bots bestätigt mit ✅ (Reaktion auf die Anfrage) oder mit einem eigenen `!reset`. Ohne Bestätigung verfällt die Anfrage nach 5 Minuten. Abschaltbar unter *Persönlichkeit & Kontext*. Beide Bots brauchen dafür mindestens v0.8.2.
 - **Speichern** (Konfigurator → *Persönlichkeit & Kontext* → „Vor !reset zusammenfassen und speichern“): Vorher fasst die KI den Verlauf zusammen und legt ihn als Markdown in `verlauf\` ab – jeder Bot nach seiner eigenen Einstellung auf seinem eigenen Rechner. Auf Wunsch bleibt die Kurzfassung als Startkontext erhalten.
 - Ohne Speichern antwortet der Bot nur „🤷 Mir egal – Verlauf vergessen, nichts gespeichert.“ (Text änderbar).
 - **Dialoge einzeln:** `!speichern` legt den letzten Dialog in `verlauf\dialoge\` ab. Mit „Jeden Dialog automatisch speichern“ passiert das am Ende jedes Dialogs von selbst.
@@ -161,7 +161,7 @@ Das Modul ist unabhängig vom Rest des Bots und lässt sich in jeden discord.py-
 | `!status` | aktuelle Einstellungen und Budget |
 | `!set <schlüssel> <wert>` | Einstellung live ändern, z. B. `!set llm.temperature 0.4` |
 | `!unset <schlüssel>` | zurück auf den Wert aus der `config.yaml` |
-| `!reset` | Verlauf zurücksetzen – bei **beiden** Bots. Je nach Einstellung vorher zusammenfassen und speichern |
+| `!reset` | Verlauf zurücksetzen – bei **beiden** Bots, nach Bestätigung durch den anderen Menschen (✅ oder eigenes `!reset`). Je nach Einstellung vorher speichern und Chat löschen |
 | `!speichern` | Letzten Dialog als Markdown-Datei speichern (ohne KI, kostet nichts) |
 | `!hilfe` | Übersicht |
 

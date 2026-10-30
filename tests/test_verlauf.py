@@ -30,7 +30,7 @@ class FakeChannel:
 
     async def send(self, text, **kw):
         self.sent.append(text)
-        msg = NS(id=1000 + len(self.sent), content=text, pinned=False, author=NS(id=ME, bot=True))
+        msg = NS(id=1000 + len(self.sent), content=text, pinned=False, author=NS(id=ME, bot=True, display_name="Bot", name="Bot"))
         self.msgs.append(msg)
         return msg
 
@@ -140,3 +140,53 @@ def test_ohne_recht_nur_eigene_nachrichten(tmp_path):
     ch.can_manage = False
     asyncio.run(bot.purge_chat(ch, 6))
     assert [x.id for x in ch.msgs][0] == 5 and "Nachrichten verwalten" in ch.sent[-1]
+
+
+def test_reset_wartet_auf_beide_menschen(tmp_path):
+    """A (Basti) fragt an → nichts passiert; B (Benni) bestätigt → B setzt zurück, A folgt und löscht."""
+    a_dir, b_dir = tmp_path / "a", tmp_path / "b"
+    a_dir.mkdir()
+    b_dir.mkdir()
+    a = make_bot(a_dir, reset_save=True, reset_delete=True)
+    b = make_bot(b_dir)
+    ch = FakeChannel([m(5, OWNER, "Wie heißt der Drache?", name="Basti")])
+
+    async def flow():
+        await a.request_reset(ch, 6)
+        req = ch.sent[-1]
+        assert verlauf.is_reset_request(req) and "reagieren" in req
+        assert a.guard.state(CH).context_after_id == 0               # noch nicht zurückgesetzt
+        req_id = a.reset_requested[CH]
+        b.note_partner_request(ch, req_id)
+        await b.request_reset(ch, req_id + 1)                          # Benni schreibt !reset = Bestätigung
+        start = ch.sent[-1]
+        assert verlauf.is_reset_start(start) and "bestätigt" in start and CH not in b.reset_to_confirm
+        await a.reset_context(ch, req_id + 2, initiator=False)          # A sieht das Startsignal
+        assert verlauf.RESET_ACK in ch.sent[-2] and "Chat geleert" in ch.sent[-1]
+        assert CH not in a.reset_requested and list((a_dir / "verlauf").glob("*.md"))
+    asyncio.run(flow())
+
+
+def test_bestaetigung_per_reaktion_nur_vom_eigenen_besitzer(tmp_path):
+    b = make_bot(tmp_path)
+    ch = FakeChannel([])
+    b.get_channel = lambda cid: ch
+
+    async def flow():
+        b.note_partner_request(ch, 50)
+        await b.on_raw_reaction_add(NS(channel_id=CH, message_id=50, emoji="✅", user_id=999))     # fremde Person
+        assert CH in b.reset_to_confirm and not ch.sent
+        await b.on_raw_reaction_add(NS(channel_id=CH, message_id=50, emoji="✅", user_id=OWNER))
+        assert CH not in b.reset_to_confirm and verlauf.is_reset_start(ch.sent[-1])
+    asyncio.run(flow())
+
+
+def test_ohne_partner_sofort(tmp_path):
+    from bot import RundenBot
+    from config import Config
+    p = tmp_path / "config.yaml"
+    p.write_text(yaml.safe_dump({"bot": {"owner_id": OWNER, "name": "Solo"}}), encoding="utf-8")
+    bot = RundenBot(Config(p))
+    ch = FakeChannel([])
+    asyncio.run(bot.request_reset(ch, 9))
+    assert "Mir egal" in ch.sent[-1] and bot.guard.state(CH).context_after_id == 9

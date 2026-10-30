@@ -68,6 +68,8 @@ class RundenBot(discord.Client):
         self.llm = LLM(cfg)
         self.locks: dict[int, asyncio.Lock] = defaultdict(asyncio.Lock)
         self.pending_purge: dict[int, int] = {}      # Kanal → Nachricht bis zu der gelöscht wird (wartet auf Partner)
+        self.reset_requested: dict[int, int] = {}    # Kanal → meine Reset-Anfrage (wartet auf den anderen Menschen)
+        self.reset_to_confirm: dict[int, int] = {}   # Kanal → Anfrage des Partners (wartet auf meinen Besitzer)
         self.tree = app_commands.CommandTree(self)
         self._synced = False
         attach_voice_notifier(self, self._notifier_config)
@@ -161,6 +163,11 @@ class RundenBot(discord.Client):
             await self.purge_chat(message.channel, message.id)   # Partner hat gespeichert → jetzt löschen
             return
 
+        if (inc.author_is_bot and inc.author_id in self.guard.partner_ids() and verlauf.is_reset_request(message.content)
+                and self.guard.channel_allowed(message.channel.id)):
+            self.note_partner_request(message.channel, message.id)
+            return
+
         if (inc.author_is_bot and inc.author_id in self.guard.partner_ids() and verlauf.is_reset_start(message.content)
                 and self.guard.channel_allowed(message.channel.id) and self.cfg.get("context.reset_follow_partner", True)):
             log.info("Partner setzt Verlauf zurück – mache mit")
@@ -250,7 +257,76 @@ class RundenBot(discord.Client):
         log.info("Dialog gespeichert: %s", path)
         await ch.send(f"-# 💾 {name}: Dialog gespeichert ({verlauf.rel(self.cfg, path)})")
 
-    async def reset_context(self, ch, after_id: int, initiator: bool):
+    # --- Reset mit Bestätigung beider Menschen ----------------------------
+    def _confirm_needed(self) -> bool:
+        return bool(self.cfg.get("bot.partner_bot_ids")) and bool(self.cfg.get("context.reset_confirm_both", True)) \
+            and bool(self.cfg.get("context.reset_follow_partner", True))
+
+    async def request_reset(self, ch, trigger_id: int):
+        """Mein Besitzer will zurücksetzen. Hat der Partner schon gefragt → das ist die Bestätigung."""
+        if ch.id in self.reset_to_confirm:
+            return await self.confirm_reset(ch, trigger_id)
+        if not self._confirm_needed():
+            async with self.locks[ch.id]:
+                return await self.reset_context(ch, trigger_id, initiator=True)
+        if ch.id in self.reset_requested:
+            return await ch.send("-# Reset-Anfrage läuft schon – wartet auf Bestätigung.")
+        import verlauf
+        owner = self.cfg.get("bot.owner_name") or "Mein Besitzer"
+        other = self.cfg.get("bot.partner_owner_name") or "der andere Besitzer"
+        minutes = int(self.cfg.get("context.reset_confirm_minutes", 5) or 5)
+        what = []
+        if self.cfg.get("context.reset_save", False):
+            what.append("vorher gespeichert")
+        if self.cfg.get("context.reset_delete", False):
+            what.append("danach der Chat gelöscht")
+        extra = f" (wird {' und '.join(what)})" if what else ""
+        sent = await ch.send(f"🔄 {owner} möchte den Verlauf zurücksetzen{extra}.\n**{other}**: bitte mit ✅ auf diese Nachricht "
+                             f"reagieren oder selbst `{self.guard.prefix()}reset` schreiben. Gilt {minutes} min.\n{verlauf.RESET_REQUEST}")
+        self.reset_requested[ch.id] = sent.id
+        try:
+            await sent.add_reaction("✅")
+        except Exception:  # noqa: BLE001  (fehlendes Recht „Reaktionen hinzufügen“ ist egal)
+            pass
+        asyncio.create_task(self._expire_request(ch, sent.id, minutes * 60))
+
+    async def _expire_request(self, ch, req_id: int, seconds: float):
+        await asyncio.sleep(seconds)
+        if self.reset_requested.get(ch.id) == req_id:
+            self.reset_requested.pop(ch.id)
+            other = self.cfg.get("bot.partner_owner_name") or "dem anderen Besitzer"
+            await ch.send(f"-# ⌛ Reset abgebrochen – keine Bestätigung von {other}.")
+
+    def note_partner_request(self, ch, req_id: int):
+        """Partner-Bot fragt für seinen Besitzer an → auf meinen Besitzer warten."""
+        self.reset_to_confirm[ch.id] = req_id
+        minutes = int(self.cfg.get("context.reset_confirm_minutes", 5) or 5)
+
+        async def expire():
+            await asyncio.sleep(minutes * 60 + 30)
+            if self.reset_to_confirm.get(ch.id) == req_id:
+                self.reset_to_confirm.pop(ch.id)
+        asyncio.create_task(expire())
+
+    async def confirm_reset(self, ch, trigger_id: int):
+        """Mein Besitzer bestätigt die Anfrage des Partners → ich setze zurück und gebe das Startsignal."""
+        req_id = self.reset_to_confirm.pop(ch.id, 0)
+        owner = self.cfg.get("bot.owner_name") or "Mein Besitzer"
+        async with self.locks[ch.id]:
+            await self.reset_context(ch, max(trigger_id, req_id), initiator=True, prefix=f"✅ {owner} bestätigt. ")
+
+    async def on_raw_reaction_add(self, payload):
+        import verlauf
+        req = self.reset_to_confirm.get(payload.channel_id)
+        if not req or payload.message_id != req or str(payload.emoji) not in verlauf.CONFIRM_EMOJIS:
+            return
+        if payload.user_id != int(self.cfg.get("bot.owner_id", 0)):
+            return
+        ch = self.get_channel(payload.channel_id)
+        if ch is not None:
+            await self.confirm_reset(ch, req)
+
+    async def reset_context(self, ch, after_id: int, initiator: bool, prefix: str = ""):
         """Verlauf zurücksetzen – bei „Speichern“ vorher zusammenfassen und als Datei ablegen."""
         import verlauf
         st = self.guard.state(ch.id)
@@ -281,7 +357,11 @@ class RundenBot(discord.Client):
         st.context_after_id, st.summary = after_id, carry
         st.bot_turns, st.in_dialog = 0, False
         self.context_store.set(ch.id, after_id=after_id, summary=carry)
-        sent = await ch.send(f"{note}\n{marker}"[:1990])
+        sent = await ch.send(f"{prefix}{note}\n{marker}"[:1990])
+        my_request = self.reset_requested.pop(ch.id, None)
+        if not initiator and my_request and self.cfg.get("context.reset_delete", False):
+            await self.purge_chat(ch, sent.id)               # beide haben bestätigt und gesichert → löschen
+            return
         if initiator and self.cfg.get("context.reset_delete", False):
             if self.cfg.get("bot.partner_bot_ids") and self.cfg.get("context.reset_follow_partner", True):
                 # Erst löschen, wenn der Partner seinen Verlauf gesichert hat (Bestätigung) – spätestens nach 3 min.
@@ -366,8 +446,7 @@ class RundenBot(discord.Client):
             self.cfg.unset(args.strip())
             await ch.send(f"✓ `{args.strip()}` zurückgesetzt")
         elif cmd == "reset":
-            async with self.locks[ch.id]:
-                await self.reset_context(ch, message.id, initiator=True)
+            await self.request_reset(ch, message.id)
         elif cmd in ("speichern", "save"):
             await self.save_dialog(ch, message.id, auto=False)
         else:
