@@ -273,8 +273,9 @@ class Store:
         app_id = flat_get(load_config(self.cfg_path), "discord.application_id")
         if not app_id:
             return {"ok": False, "errors": ["Application-ID fehlt (Abschnitt Discord)."]}
+        perms = INVITE_PERMISSIONS + (8192 if flat_get(load_config(self.cfg_path), "context.reset_delete") else 0)  # + Nachrichten verwalten
         url = (f"https://discord.com/oauth2/authorize?client_id={app_id}"
-               f"&scope=bot%20applications.commands&permissions={INVITE_PERMISSIONS}")
+               f"&scope=bot%20applications.commands&permissions={perms}")
         return {"ok": True, "url": url}
 
     def _cfg_env(self):

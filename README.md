@@ -8,7 +8,7 @@
 
 **Text- und Sprachbot für Discord** – eine Runde aus Menschen und KI-Bots, mit festen Leitplanken. Ein Werkzeug von BZi Studio.
 
-> **Status: Beta (v0.8.0).** Leitplanken und Abo-Anbindung sind automatisch getestet, der Betrieb mit zwei Bots in echtem Discord noch nicht. Bitte erst in einem eigenen Test-Server ausprobieren.
+> **Status: Beta (v0.8.1).** Leitplanken und Abo-Anbindung sind automatisch getestet, der Betrieb mit zwei Bots in echtem Discord noch nicht. Bitte erst in einem eigenen Test-Server ausprobieren.
 
 Gedacht für eine Runde aus zwei Menschen und zwei KIs. Jede Person betreibt **einen eigenen Bot** auf dem eigenen Rechner, mit eigenem API-Key **oder eigenem Claude-Abo**. Gleicher Code, eigene `config.yaml`.
 
@@ -111,6 +111,7 @@ Damit der Kontext (und damit Kosten bzw. Kontingent) nicht immer weiter wächst:
 - **Speichern** (Konfigurator → *Persönlichkeit & Kontext* → „Vor !reset zusammenfassen und speichern“): Vorher fasst die KI den Verlauf zusammen und legt ihn als Markdown in `verlauf\` ab – jeder Bot nach seiner eigenen Einstellung auf seinem eigenen Rechner. Auf Wunsch bleibt die Kurzfassung als Startkontext erhalten.
 - Ohne Speichern antwortet der Bot nur „🤷 Mir egal – Verlauf vergessen, nichts gespeichert.“ (Text änderbar).
 - **Dialoge einzeln:** `!speichern` legt den letzten Dialog in `verlauf\dialoge\` ab. Mit „Jeden Dialog automatisch speichern“ passiert das am Ende jedes Dialogs von selbst.
+- **Chat löschen** (Schalter „Nach !reset den Chat im Kanal löschen“): Nachdem beide Bots gesichert haben, löscht der Bot alle Nachrichten im Kanal bis zum Reset – angeheftete bleiben. Er wartet dafür auf die Bestätigung des Partner-Bots (höchstens 3 Minuten). Braucht das Discord-Recht **Nachrichten verwalten** für die Rolle des Bots; ohne das löscht er nur seine eigenen Nachrichten. Es reicht, das in einem der beiden Bots einzuschalten.
 - Der Reset-Stand bleibt auch nach einem Neustart erhalten.
 
 ## Varianten und Updates

@@ -67,6 +67,8 @@ SECTIONS = [
          "help": "!reset setzt den Verlauf bei beiden Bots zurück. An: vorher fasst die KI den Verlauf zusammen und speichert ihn als Markdown-Datei auf diesem Rechner (kostet eine Anfrage). Aus: nur zurücksetzen."},
         {"key": "context.reset_carry_summary", "label": "Zusammenfassung als Startkontext behalten", "type": "bool", "default": True,
          "show_if": {"context.reset_save": [True]}, "help": "Der Bot kennt nach dem Reset die Kurzfassung – der Kontext bleibt trotzdem klein."},
+        {"key": "context.reset_delete", "label": "Nach !reset den Chat im Kanal löschen", "type": "bool", "default": False,
+         "help": "Erst speichern beide Bots (je nach Einstellung), dann löscht dieser Bot alle Nachrichten im Kanal bis zum Reset – angeheftete bleiben. Braucht das Discord-Recht „Nachrichten verwalten“ (Servereinstellungen → Rollen → Rolle des Bots). Nur in einem der beiden Bots einschalten genügt."},
         {"key": "context.reset_no_save_text", "label": "Antwort bei !reset ohne Speichern", "type": "text",
          "default": "🤷 Mir egal – Verlauf vergessen, nichts gespeichert.", "show_if": {"context.reset_save": [False]}},
         {"key": "context.dialog_save", "label": "Jeden Dialog automatisch speichern", "type": "bool", "default": False,

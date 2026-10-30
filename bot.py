@@ -67,6 +67,7 @@ class RundenBot(discord.Client):
             st.summary = v.get("summary") or ""
         self.llm = LLM(cfg)
         self.locks: dict[int, asyncio.Lock] = defaultdict(asyncio.Lock)
+        self.pending_purge: dict[int, int] = {}      # Kanal → Nachricht bis zu der gelöscht wird (wartet auf Partner)
         self.tree = app_commands.CommandTree(self)
         self._synced = False
         attach_voice_notifier(self, self._notifier_config)
@@ -152,6 +153,12 @@ class RundenBot(discord.Client):
                 and self.guard.channel_allowed(message.channel.id) and (inc.is_own or inc.author_id in self.guard.partner_ids()):
             self.loop.create_task(self.save_dialog(message.channel, message.id, auto=True))
         if inc.is_own:
+            return
+
+        if (inc.author_is_bot and inc.author_id in self.guard.partner_ids() and verlauf.RESET_ACK in message.content
+                and message.channel.id in self.pending_purge):
+            self.pending_purge.pop(message.channel.id)
+            await self.purge_chat(message.channel, message.id)   # Partner hat gespeichert → jetzt löschen
             return
 
         if (inc.author_is_bot and inc.author_id in self.guard.partner_ids() and verlauf.is_reset_start(message.content)
@@ -274,7 +281,41 @@ class RundenBot(discord.Client):
         st.context_after_id, st.summary = after_id, carry
         st.bot_turns, st.in_dialog = 0, False
         self.context_store.set(ch.id, after_id=after_id, summary=carry)
-        await ch.send(f"{note}\n{marker}"[:1990])
+        sent = await ch.send(f"{note}\n{marker}"[:1990])
+        if initiator and self.cfg.get("context.reset_delete", False):
+            if self.cfg.get("bot.partner_bot_ids") and self.cfg.get("context.reset_follow_partner", True):
+                # Erst löschen, wenn der Partner seinen Verlauf gesichert hat (Bestätigung) – spätestens nach 3 min.
+                self.pending_purge[ch.id] = sent.id
+                asyncio.create_task(self._purge_after_timeout(ch, sent.id, 180))
+            else:
+                await self.purge_chat(ch, sent.id)
+
+    async def _purge_after_timeout(self, ch, until_id: int, seconds: float):
+        await asyncio.sleep(seconds)
+        if self.pending_purge.get(ch.id) == until_id:
+            self.pending_purge.pop(ch.id)
+            log.info("Partner hat den Reset nicht bestätigt – lösche trotzdem")
+            await self.purge_chat(ch, until_id)
+
+    async def purge_chat(self, ch, until_id: int):
+        """Alle Nachrichten im Kanal bis einschließlich until_id löschen (angeheftete bleiben)."""
+        name = self.cfg.get("bot.name") or "Bot"
+        me = getattr(getattr(ch, "guild", None), "me", None)
+        can = bool(me and ch.permissions_for(me).manage_messages)
+        own = me.id if me else self.user.id
+        try:
+            if can:
+                gone = await ch.purge(limit=None, before=discord.Object(id=until_id + 1), check=lambda m: not m.pinned,
+                                      reason="!reset – Verlauf gesichert")
+                await ch.send(f"-# 🧹 {name}: Chat geleert ({len(gone)} Nachrichten).")
+            else:
+                gone = await ch.purge(limit=None, before=discord.Object(id=until_id + 1), bulk=False,
+                                      check=lambda m: m.author.id == own and not m.pinned)
+                await ch.send(f"-# 🧹 {name}: Nur meine eigenen Nachrichten gelöscht ({len(gone)}) – für den ganzen Chat "
+                              "braucht meine Rolle das Recht „Nachrichten verwalten“.")
+        except discord.HTTPException as e:
+            log.warning("Chat löschen fehlgeschlagen: %s", e)
+            await ch.send(f"-# ⚠️ {name}: Chat löschen fehlgeschlagen ({e.status}).")
 
     async def fetch_history(self, ch, after_id: int, before_id: int | None = None, raw: bool = False):
         limit = int(self.cfg.get("context.max_messages", 30))

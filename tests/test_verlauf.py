@@ -17,6 +17,7 @@ CH = 100
 class FakeChannel:
     def __init__(self, msgs):
         self.id, self.name, self.msgs, self.sent = CH, "ai-chat", msgs, []
+        self.guild, self.can_manage = NS(me=NS(id=ME)), True
 
     def history(self, limit=30, oldest_first=False, after=None, before=None):
         items = [m for m in self.msgs if (not after or m.id > after.id) and (not before or m.id < before.id)]
@@ -29,6 +30,18 @@ class FakeChannel:
 
     async def send(self, text, **kw):
         self.sent.append(text)
+        msg = NS(id=1000 + len(self.sent), content=text, pinned=False, author=NS(id=ME, bot=True))
+        self.msgs.append(msg)
+        return msg
+
+    def permissions_for(self, member):
+        return NS(manage_messages=self.can_manage)
+
+    async def purge(self, limit=None, before=None, check=None, bulk=True, reason=None):
+        gone = [m for m in self.msgs if m.id < before.id and check(m)]
+        self.msgs = [m for m in self.msgs if m not in gone]
+        self.purged = gone
+        return gone
 
     def typing(self):
         class T:
@@ -37,8 +50,8 @@ class FakeChannel:
         return T()
 
 
-def m(i, author, text, bot=False, name=None):
-    return NS(id=i, content=text, author=NS(id=author, bot=bot, display_name=name or f"U{author}", name=name or f"U{author}"))
+def m(i, author, text, bot=False, name=None, pinned=False):
+    return NS(id=i, content=text, pinned=pinned, author=NS(id=author, bot=bot, display_name=name or f"U{author}", name=name or f"U{author}"))
 
 
 def make_bot(tmp_path, **ctx):
@@ -103,3 +116,27 @@ def test_dialog_speichern(tmp_path):
     text = f[0].read_text(encoding="utf-8")
     assert "# Dialog: Godot oder HTML?" in text and "**Punky:** @Cortex HTML!" in text and "vorher" not in text
     assert "Dialog gespeichert" in ch.sent[0]
+
+
+def test_reset_loescht_chat_erst_nach_partner_bestaetigung(tmp_path):
+    bot = make_bot(tmp_path, reset_delete=True)
+    ch = FakeChannel([m(5, OWNER, "hallo", name="Basti"), m(6, PARTNER, "hi", True, "Punky"), m(7, OWNER, "wichtig", pinned=True)])
+
+    async def flow():
+        bot._purge_after_timeout = lambda *a: asyncio.sleep(0)      # Zeitlimit hier nicht abwarten
+        await bot.reset_context(ch, 8, initiator=True)
+        assert ch.id in bot.pending_purge and len(ch.msgs) == 4      # noch nichts gelöscht
+        ack = m(2000, PARTNER, "✅ Punky: gespeichert\n" + verlauf.RESET_ACK, True, "Punky")
+        ch.msgs.append(ack)
+        bot.pending_purge.pop(ch.id)
+        await bot.purge_chat(ch, ack.id)
+    asyncio.run(flow())
+    assert [x.id for x in ch.msgs][0] == 7 and "Chat geleert (4 Nachrichten)" in ch.sent[-1]
+
+
+def test_ohne_recht_nur_eigene_nachrichten(tmp_path):
+    bot = make_bot(tmp_path)
+    ch = FakeChannel([m(5, OWNER, "hallo"), m(6, ME, "ich", True)])
+    ch.can_manage = False
+    asyncio.run(bot.purge_chat(ch, 6))
+    assert [x.id for x in ch.msgs][0] == 5 and "Nachrichten verwalten" in ch.sent[-1]
