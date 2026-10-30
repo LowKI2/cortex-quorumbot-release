@@ -113,6 +113,11 @@ SECTIONS = [
         {"key": "voice_notifier.disabled_guilds", "label": "Server ohne Melder", "type": "idlist", "show_if": {"voice_notifier.enabled": [True]},
          "advanced": True, "help": "Server-IDs, in denen dieser Bot nicht meldet (z. B. weil dort schon ein anderer Bot meldet)."},
     ]),
+    ("Updates", [
+        {"key": "update.mode", "label": "Nach Updates suchen", "type": "select", "options": ["manuell", "hinweis", "automatisch"],
+         "default": "hinweis",
+         "help": "manuell = nur per Knopf · hinweis = beim Start prüfen und anzeigen · automatisch = beim Start von Bot oder Konfigurator installieren und neu starten. Konfiguration und Schlüssel bleiben immer erhalten."},
+    ]),
     ("Chat-Rechte", [
         {"key": "guardrails.settable_keys", "label": "Per Chat änderbar (!set und Slash-Befehle)", "type": "checklist",
          "options": DEFAULT_SETTABLE, "default": DEFAULT_SETTABLE},

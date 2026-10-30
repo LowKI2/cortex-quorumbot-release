@@ -1,7 +1,8 @@
 """Konfigurator für Cortex QuorumBot – lokale Weboberfläche.
 
-Start:  python konfigurator.py [config.yaml] [--port 8765]
-Öffnet http://127.0.0.1:8765 – nur auf diesem Rechner erreichbar.
+Start:  python konfigurator.py [config.yaml] [--port 8765] [--fenster | --browser]
+Öffnet http://127.0.0.1:8765 – nur auf diesem Rechner erreichbar. In der Windows-exe
+(oder mit --fenster und installiertem pywebview) als eigenes Programmfenster.
 
 Funktioniert vor dem ersten Start (legt config.yaml an) und bei laufendem Bot:
 der Bot liest config.yaml bei der nächsten Nachricht neu ein.
@@ -11,6 +12,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import os
 import shutil
 import sys
 import threading
@@ -106,6 +108,9 @@ class Store:
         self.overrides_path = cfg_path.with_name(cfg_path.stem + ".overrides.json")
         self.status_path = cfg_path.with_name(cfg_path.stem + ".status.json")
         self.budget_path = cfg_path.with_name(cfg_path.stem + ".budget.json")
+        self.window = None                # pywebview-Fenster (nur im Fenstermodus)
+        self._update_info = None
+        self._update_ts = 0.0
 
     def overrides(self) -> dict:
         try:
@@ -162,7 +167,58 @@ class Store:
             "status": status, "budget": budget, "exists": self.cfg_path.exists(),
             "path": str(self.cfg_path), "errors": errors, "warnings": warnings,
             "wizard_done": bool(flat_get(data, "meta.wizard_done")),
+            "app": self.app_info(),
         }
+
+    # --- Updates ---------------------------------------------------------
+    def app_info(self) -> dict:
+        import updater
+        from version import VERSION, variant
+        return {"version": VERSION, "variant": variant(), "dev": updater.is_dev(),
+                "backups": [p.name for p in updater.backups()], "window": self.window is not None}
+
+    def _bot_running(self) -> bool:
+        try:
+            st = json.loads(self.status_path.read_text(encoding="utf-8"))
+            return time.time() - float(st.get("ts", 0)) < 60
+        except (OSError, ValueError):
+            return False
+
+    def update_check(self, force: bool = False) -> dict:
+        import updater
+        if force or not self._update_info or time.time() - self._update_ts > 600:
+            self._update_info = updater.check()
+            self._update_ts = time.time()
+        return self._update_info
+
+    def update_install(self) -> dict:
+        import updater
+        if self._bot_running():
+            return {"ok": False, "errors": ["Der Bot läuft – bitte erst beenden (Fenster schließen), dann updaten."]}
+        res = updater.install(self.update_check(force=True))
+        if res.get("ok"):
+            self._update_info = None
+            self.schedule_restart()
+        return res
+
+    def update_rollback(self) -> dict:
+        import updater
+        if self._bot_running():
+            return {"ok": False, "errors": ["Der Bot läuft – bitte erst beenden."]}
+        res = updater.rollback()
+        if res.get("ok"):
+            self.schedule_restart()
+        return res
+
+    def schedule_restart(self):
+        """Nach Update: neuen Konfigurator starten und diesen beenden (Antwort geht vorher noch raus)."""
+        import updater
+
+        def go():
+            time.sleep(1.0)
+            updater.restart("konfigurator", self.cfg_path, ["--no-browser"] if self.window is None else [])
+            os._exit(updater.RESTART_CODE)              # beendet auch ein offenes Programmfenster
+        threading.Thread(target=go, daemon=True).start()
 
     def _getter(self, data: dict):
         ov = self.overrides()
@@ -271,6 +327,56 @@ class Store:
                 "application_id": str(app.get("id")) if st == 200 and isinstance(app, dict) else None,
                 "intent": bool(flags & (FLAG_MESSAGE_CONTENT | FLAG_MESSAGE_CONTENT_LIMITED))}
 
+    # --- Profilbild des Bots ---------------------------------------------
+    AVATAR_TYPES = ("image/png", "image/jpeg", "image/gif", "image/webp")
+    AVATAR_MAX = 8 * 1024 * 1024
+
+    def _discord_auth(self):
+        from checks import load_env
+        data = load_config(self.cfg_path)
+        token = load_env(self.env_path).get(flat_get(data, "discord.token_env") or "DISCORD_TOKEN", "")
+        return {"Authorization": f"Bot {token}"} if token else None
+
+    def bot_profile(self, get=None) -> dict:
+        from checks import DISCORD_API, http_get
+        auth = self._discord_auth()
+        if not auth:
+            return {"ok": False, "errors": ["Erst den Discord-Token setzen."]}
+        st, me = (get or http_get)(f"{DISCORD_API}/users/@me", auth)
+        if st != 200 or not isinstance(me, dict):
+            return {"ok": False, "errors": ["Token ungültig." if st == 401 else f"Discord nicht erreichbar ({st})."]}
+        uid, av = str(me.get("id")), me.get("avatar")
+        url = (f"https://cdn.discordapp.com/avatars/{uid}/{av}.{'gif' if str(av).startswith('a_') else 'png'}?size=128"
+               if av else f"https://cdn.discordapp.com/embed/avatars/{(int(uid) >> 22) % 6}.png")
+        return {"ok": True, "name": me.get("username"), "avatar_url": url, "has_avatar": bool(av)}
+
+    def set_avatar(self, data_url: str, patch=None) -> dict:
+        """Profilbild des Bots setzen (Datenadresse aus dem Browser). Leer = Standardbild."""
+        import base64
+        from checks import DISCORD_API, http_patch_json
+        auth = self._discord_auth()
+        if not auth:
+            return {"ok": False, "errors": ["Erst den Discord-Token setzen."]}
+        data_url = (data_url or "").strip()
+        if data_url:
+            head, _, b64 = data_url.partition(",")
+            mime = head[5:].split(";")[0] if head.startswith("data:") else ""
+            if mime not in self.AVATAR_TYPES or ";base64" not in head:
+                return {"ok": False, "errors": ["Bitte ein Bild wählen (PNG, JPG, GIF oder WebP)."]}
+            try:
+                raw = base64.b64decode(b64, validate=True)
+            except ValueError:
+                return {"ok": False, "errors": ["Bild konnte nicht gelesen werden."]}
+            if len(raw) > self.AVATAR_MAX:
+                return {"ok": False, "errors": ["Bild ist größer als 8 MB."]}
+        st, res = (patch or http_patch_json)(f"{DISCORD_API}/users/@me", {"avatar": data_url or None}, auth)
+        if st == 200:
+            return {"ok": True}
+        if st == 429:
+            return {"ok": False, "errors": ["Discord erlaubt nur wenige Bildwechsel kurz hintereinander – in ein paar Minuten nochmal versuchen."]}
+        msg = res.get("message") if isinstance(res, dict) else None
+        return {"ok": False, "errors": [f"Discord hat abgelehnt ({st}{': ' + msg if msg else ''})."]}
+
     def knowledge_check(self) -> dict:
         """Nur die MediaVault-Prüfung (ohne Modell-Anfrage) – für den Knopf „Verbindung prüfen“."""
         if not self.cfg_path.exists():
@@ -286,6 +392,16 @@ class Store:
 
     def pick_folder(self) -> dict:
         """Windows-/System-Dialog „Ordner wählen“ – der Konfigurator läuft lokal, daher geht das."""
+        if self.window is not None:                       # eigenes Fenster: Dialog von WebView2
+            try:
+                import webview
+                res = self.window.create_file_dialog(webview.FOLDER_DIALOG)
+            except Exception:  # noqa: BLE001
+                res = None
+            if res:
+                return {"ok": True, "path": str(Path(res[0] if isinstance(res, (list, tuple)) else res))}
+            if res is not None:
+                return {"ok": False, "errors": ["Abgebrochen."]}
         import queue
         q = queue.Queue()
 
@@ -323,17 +439,18 @@ class Store:
         if not self.cfg_path.exists():
             return {"ok": False, "errors": ["Erst speichern."]}
         import subprocess
-        kwargs = {"cwd": str(HERE)}
+        from version import app_dir, command
+        kwargs = {"cwd": str(app_dir())}
         if sys.platform == "win32":
             kwargs["creationflags"] = subprocess.CREATE_NEW_CONSOLE
         else:
             kwargs["start_new_session"] = True
-        subprocess.Popen([sys.executable, str(HERE / "bot.py"), str(self.cfg_path)], **kwargs)
+        subprocess.Popen(command("bot", str(self.cfg_path)), **kwargs)
         return {"ok": True}
 
 
 # --- HTTP ---------------------------------------------------------------
-def make_handler(store: Store):
+def make_handler(store: "Store"):
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, *a):
             pass
@@ -368,6 +485,8 @@ def make_handler(store: Store):
                 return self._json(store.invite())
             if self.path == "/api/discord/identity":
                 return self._json(store.discord_identity())
+            if self.path == "/api/discord/profile":
+                return self._json(store.bot_profile())
             self._json({"error": "nicht gefunden"}, 404)
 
         def do_POST(self):
@@ -390,6 +509,10 @@ def make_handler(store: Store):
                 "/api/bot/start": store.start_bot,
                 "/api/knowledge/check": store.knowledge_check,
                 "/api/pick_folder": store.pick_folder,
+                "/api/discord/avatar": lambda: store.set_avatar(str(body.get("image", ""))),
+                "/api/update/check": lambda: store.update_check(force=bool(body.get("force"))),
+                "/api/update/install": store.update_install,
+                "/api/update/rollback": store.update_rollback,
             }
             fn = routes.get(self.path)
             if not fn:
@@ -404,11 +527,49 @@ def main():
     ap.add_argument("config", nargs="?", default="config.yaml")
     ap.add_argument("--port", type=int, default=8765)
     ap.add_argument("--no-browser", action="store_true")
+    ap.add_argument("--fenster", action="store_true", help="eigenes Programmfenster (braucht pywebview)")
+    ap.add_argument("--browser", action="store_true", help="immer im Browser öffnen")
     args = ap.parse_args()
     cfg_path = Path(args.config).resolve()
-    server = ThreadingHTTPServer(("127.0.0.1", args.port), make_handler(Store(cfg_path)))
+
+    from version import frozen
+    store = Store(cfg_path)
+    import updater
+    mode = flat_get(load_config(cfg_path), "update.mode") or FIELDS["update.mode"]["default"]
+    if updater.auto_update(mode, "konfigurator", cfg_path):
+        sys.exit(updater.RESTART_CODE)
+
+    server = None
+    for _ in range(30):                                   # nach einem Neustart kann der Port kurz noch belegt sein
+        try:
+            server = ThreadingHTTPServer(("127.0.0.1", args.port), make_handler(store))
+            break
+        except OSError:
+            time.sleep(0.5)
+    if server is None:
+        sys.exit(f"Port {args.port} ist belegt – läuft der Konfigurator schon? Dann dort weiterarbeiten.")
     url = f"http://127.0.0.1:{args.port}"
     print(f"Konfigurator läuft: {url}  (Datei: {cfg_path})  – Beenden mit Strg+C")
+
+    want_window = (frozen() or args.fenster) and not args.browser
+    if want_window:
+        try:
+            import webview
+        except ImportError:
+            webview = None
+            print("Eigenes Fenster nicht verfügbar – öffne im Browser.")
+        if webview is not None:
+            threading.Thread(target=server.serve_forever, daemon=True).start()
+            store.window = webview.create_window("Cortex QuorumBot · Konfigurator", url, width=1320, height=900,
+                                                 min_size=(380, 600), background_color="#070b12")
+            try:
+                webview.start()
+                os._exit(updater.RESTART_CODE)            # Fenster geschlossen: Konsolenfenster schließt mit
+            except Exception as e:  # noqa: BLE001  (z. B. WebView2 fehlt)
+                store.window = None
+                print(f"Fenster ließ sich nicht öffnen ({e}) – öffne im Browser.")
+                webbrowser.open(url)
+                threading.Event().wait()
     if not args.no_browser:
         threading.Timer(0.5, lambda: webbrowser.open(url)).start()
     try:

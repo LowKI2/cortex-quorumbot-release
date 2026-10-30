@@ -247,6 +247,11 @@ details[open] > summary::before{content:"–"}
 
 .kn-extra{display:grid;gap:var(--space-4);margin-top:var(--space-5);padding-top:var(--space-4);border-top:1px solid var(--line)}
 .kn-actions{display:flex;gap:var(--space-3);align-items:center;flex-wrap:wrap}
+.av{display:flex;gap:var(--space-4);align-items:center;flex-wrap:wrap}
+.av img{width:72px;height:72px;border-radius:50%;object-fit:cover;border:1px solid var(--line-strong);background:var(--bg-3)}
+.av .ph{width:72px;height:72px;border-radius:50%;border:1px dashed var(--line-strong);display:grid;place-items:center;color:var(--text-2)}
+.up-box{display:grid;gap:var(--space-3)}
+.up-notes{white-space:pre-wrap;font-size:13px;color:var(--text-1);background:var(--bg-1);border:1px solid var(--line);border-radius:8px;padding:var(--space-3);max-height:220px;overflow:auto}
 .kn-out:empty{display:none}
 .kn-actions .help,.voice-actions .help{color:var(--text-2);font-size:var(--text-xs)}
 
@@ -313,6 +318,8 @@ ol.howto code,.wiz-b code{font-family:var(--font-mono);font-size:var(--text-xs);
   <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14-5l-2 2M4 4v4h4M4 13a8 8 0 0 0 14 5l2-2M20 20v-4h-4"/></symbol>
   <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 19V5M9 7h6"/></symbol>
   <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 20a2 2 0 0 0 4 0"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></symbol>
+  <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-9 9"/></symbol>
   <symbol id="i-undo" viewBox="0 0 24 24"><path d="M4 9h11a5 5 0 0 1 0 10H8"/><path d="M8 5 4 9l4 4"/></symbol>
 </svg>
 
@@ -395,7 +402,7 @@ ol.howto code,.wiz-b code{font-family:var(--font-mono);font-size:var(--text-xs);
 </div>
 
 <script>
-const ICONS = {"Bot & Personen":"bot","Discord":"hash","Modell":"cpu","Persönlichkeit & Kontext":"user","Leitplanken":"shield","Chat-Rechte":"lock","Voice-Melder":"bell","Wissen":"book"};
+const ICONS = {"Bot & Personen":"bot","Discord":"hash","Modell":"cpu","Persönlichkeit & Kontext":"user","Leitplanken":"shield","Chat-Rechte":"lock","Voice-Melder":"bell","Wissen":"book","Updates":"download"};
 let S = null, dirty = false;
 const $ = (s, el=document) => el.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -496,7 +503,14 @@ function renderSections(){
           <div class="kn-actions"><button data-pickfolder="1">${icon("book")}Ordner wählen …</button><span class="help">öffnet den Ordner-Dialog von Windows und fügt den Ordner der Liste hinzu</span></div></div>
         <div class="kn-extra"><div class="kn-actions"><button data-kncheck="1">${icon("check")}Wissen prüfen</button><span class="help">MediaVault: Adresse, Schlüssel, Werkzeuge · Ordner: vorhanden, Anzahl lesbarer Dateien – ohne Modell-Anfrage. „Vollständiger Test“ fragt zusätzlich echt ab.</span></div>
         <div class="kn-out"></div></div>` : "";
-    card.innerHTML = `<div class="card-h">${icon(ic)}<h2>${esc(sec.title)}</h2>${nOv?`<span class="tag warn" style="margin-left:auto">${nOv} per Chat</span>`:""}</div><div class="grid">${block(basic)}</div>${extra}`
+    const extra2 = sec.title === "Bot & Personen" ? `<div class="kn-extra"><div class="f"><label>Profilbild des Bots in Discord</label>
+        <div class="av"><span class="ph" id="av-img">${icon("image")}</span>
+          <input type="file" id="av-file" accept="image/png,image/jpeg,image/gif,image/webp" hidden>
+          <button id="av-pick">${icon("image")}Bild wählen …</button>
+          <button class="ghost" id="av-reset">Standardbild</button></div>
+        <span class="help">Wird sofort bei Discord gesetzt (PNG, JPG, GIF, WebP, max. 8 MB, am besten quadratisch). Geht erst, wenn der Discord-Token gesetzt ist. Discord erlaubt nur wenige Wechsel kurz hintereinander.</span></div></div>`
+      : sec.title === "Updates" ? `<div class="kn-extra"><div class="up-box" id="up-box"></div></div>` : "";
+    card.innerHTML = `<div class="card-h">${icon(ic)}<h2>${esc(sec.title)}</h2>${nOv?`<span class="tag warn" style="margin-left:auto">${nOv} per Chat</span>`:""}</div><div class="grid">${block(basic)}</div>${extra}${extra2}`
       + (adv.length?`<details><summary class="label">Erweitert</summary><div class="grid" style="margin-top:var(--space-4)">${block(adv)}</div></details>`:"");
     $("#main").appendChild(card);
     nav.insertAdjacentHTML("beforeend", `<a href="#sec-${i}">${icon(ic)}<span class="t">${esc(sec.title)}</span>${nOv?`<span class="cnt">${nOv}</span>`:""}</a>`);
@@ -506,7 +520,77 @@ function renderSections(){
   }
   applyShowIf();
   spy();
+  loadAvatar(); renderUpdates();
 }
+
+/* ---------- Profilbild ---------- */
+async function loadAvatar(){
+  const box = $("#av-img"); if(!box || !S.secrets[Object.keys(S.secrets)[0]]) return;
+  const r = await api("/api/discord/profile");
+  if(r.ok) box.outerHTML = `<img id="av-img" src="${esc(r.avatar_url)}" alt="Profilbild von ${esc(r.name)}">`;
+}
+async function sendAvatar(image){
+  msg("Profilbild wird gesetzt …","info");
+  const r = await api("/api/discord/avatar",{image});
+  if(!r.ok) return msg(r.errors.join(" "),"err");
+  msg("Profilbild bei Discord gesetzt.","ok"); setTimeout(loadAvatar, 800);
+}
+document.addEventListener("click", e => {
+  if(e.target.closest("#av-pick")) $("#av-file").click();
+  if(e.target.closest("#av-reset") && confirm("Standardbild von Discord verwenden?")) sendAvatar("");
+});
+document.addEventListener("change", e => {
+  if(e.target.id !== "av-file" || !e.target.files[0]) return;
+  const f = e.target.files[0];
+  if(f.size > 8*1024*1024) return msg("Bild ist größer als 8 MB.","err");
+  const rd = new FileReader(); rd.onload = () => sendAvatar(rd.result); rd.readAsDataURL(f); e.target.value = "";
+});
+
+/* ---------- Updates ---------- */
+let UP = null;
+function renderUpdates(){
+  const box = $("#up-box"); if(!box) return;
+  const a = S.app || {};
+  const variant = a.variant === "exe" ? "Windows-Programm" : "Python";
+  let st = `<span class="tag info">v${esc(a.version)} · ${variant}</span>`;
+  if(UP && UP.ok) st += UP.available ? ` <span class="tag warn">v${esc(UP.latest)} verfügbar</span>` : ` <span class="tag ok">aktuell</span>`;
+  if(UP && !UP.ok) st += ` <span class="tag bad">${esc(UP.errors.join(" "))}</span>`;
+  const dev = a.dev ? `<span class="help">Entwicklungsordner (git) – Updates hier per git, der Knopf zeigt nur an.</span>` : "";
+  box.innerHTML = `<div class="kn-actions">${st}</div>
+    <div class="kn-actions"><button data-up="check">${icon("refresh")}Nach Updates suchen</button>
+      ${UP && UP.available && !a.dev ? `<button class="primary" data-up="install">${icon("download")}v${esc(UP.latest)} installieren</button>`:""}
+      ${a.backups && a.backups.length && !a.dev ? `<button class="ghost" data-up="rollback">${icon("undo")}Vorige Version (${esc(a.backups[a.backups.length-1])})</button>`:""}
+      <a href="${esc((UP&&UP.page)||"https://github.com/LowKI2/cortex-quorumbot-release/releases/latest")}" target="_blank" rel="noopener" class="help">Release-Seite</a></div>
+    ${dev ? `<div class="f">${dev}</div>` : ""}
+    ${UP && UP.available && UP.notes ? `<details><summary class="label">Was ist neu in v${esc(UP.latest)}</summary><div class="up-notes">${esc(UP.notes)}</div></details>`:""}
+    <div class="f"><span class="help">Beim Update bleiben config.yaml, .env und alle Einstellungen erhalten. Der alte Stand wird in .update-sicherung gesichert. Bot vorher beenden.</span></div>`;
+  const n = document.querySelector('nav.side a[href="#'+box.closest(".card").id+'"]');
+  if(n && UP && UP.available && !n.querySelector(".cnt")) n.insertAdjacentHTML("beforeend", `<span class="cnt">1</span>`);
+}
+async function checkUpdates(force){
+  UP = await api("/api/update/check",{force}); renderUpdates();
+  if(force && UP.ok) msg(UP.available ? `Update auf v${UP.latest} verfügbar.` : "Du hast die neueste Version.", UP.available?"warn":"ok");
+}
+async function waitRestart(){
+  msg("Update installiert – Konfigurator startet neu …","ok");
+  const old = S.app.version;
+  for(let i=0;i<60;i++){
+    await new Promise(r=>setTimeout(r,1000));
+    try{ const s = await api("/api/state"); if(s.app){ location.reload(); return; } }catch(e){}
+  }
+  msg("Neustart dauert ungewöhnlich lange – Konfigurator bitte von Hand neu starten.","warn");
+}
+document.addEventListener("click", async e => {
+  const b = e.target.closest("[data-up]"); if(!b) return;
+  if(b.dataset.up==="check"){ b.disabled=true; await checkUpdates(true); return; }
+  if(dirty) return msg("Erst speichern.","warn");
+  const label = b.dataset.up==="install" ? `Update auf v${UP.latest} installieren? Konfigurator startet danach neu.` : "Vorige Version wiederherstellen? Konfigurator startet danach neu.";
+  if(!confirm(label)) return;
+  b.disabled = true; msg(b.dataset.up==="install" ? "Lade und installiere Update …" : "Stelle wieder her …","info");
+  const r = await api("/api/update/"+b.dataset.up,{});
+  if(!r.ok){ b.disabled=false; return msg(r.errors.join(" "),"err"); }
+  waitRestart();
+});
 
 function renderSecrets(){
   $("#secrets").innerHTML = Object.entries(S.secrets).map(([name,set]) => `
@@ -557,6 +641,7 @@ async function load(){
   S = await api("/api/state");
   renderHeader(); renderSections(); renderSecrets(); renderNotes();
   dirty = false; msg("");
+  if(!UP && S.values["update.mode"] !== "manuell") checkUpdates(false);
 }
 
 /* ---------- Ereignisse ---------- */
@@ -685,7 +770,7 @@ function wizRender(){
     B.innerHTML = `<h3>Willkommen bei Cortex QuorumBot</h3>
       <p>Der Assistent führt dich in etwa 15 Minuten durch die Einrichtung deines Bots. Jeder Mensch in der Runde richtet seinen <b>eigenen</b> Bot ein.</p>
       <ol class="howto"><li><span><b>Du brauchst:</b> ein Discord-Konto und einen Server, auf dem du Bots hinzufügen darfst (am besten einen eigenen Test-Server).</span></li>
-      <li><span>Python läuft bereits – sonst wäre diese Seite nicht offen.</span></li>
+      <li><span>${S.app && S.app.variant==="exe" ? "Das Programm läuft bereits – Python brauchst du nicht." : "Python läuft bereits – sonst wäre diese Seite nicht offen."}</span></li>
       <li><span>Wähle, womit dein Bot denkt:</span></li></ol>
       <div class="modes">${Object.entries(MODES).map(([k,m])=>`<button class="mode ${prov===k?"on":""}" data-mode="${k}"><b>${m.t}</b><span>${m.d}</span><span class="tag info">${m.tag}</span></button>`).join("")}</div>`;
   }

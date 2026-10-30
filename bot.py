@@ -220,6 +220,9 @@ def main():
     cfg_path = Path(sys.argv[1] if len(sys.argv) > 1 else "config.yaml")
     load_dotenv(cfg_path.parent / ".env")
     cfg = Config(cfg_path)
+    import updater
+    if updater.auto_update(cfg.get("update.mode", "hinweis"), "bot", cfg_path, log=logging.info):
+        sys.exit(updater.RESTART_CODE)
     token = os.environ.get(cfg.get("discord.token_env", "DISCORD_TOKEN"), "")
     if not token:
         sys.exit(f"Discord-Token fehlt: {cfg.get('discord.token_env')} in .env setzen")

@@ -80,6 +80,23 @@ def http_post_json(url: str, payload: dict, headers: dict | None = None, timeout
         return 0, str(e)
 
 
+def http_patch_json(url: str, payload: dict, headers: dict | None = None, timeout: float = 30.0):
+    """PATCH mit JSON. Gibt (status, json|None) zurück; Netzwerkfehler → (0, Fehlertext)."""
+    req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), method="PATCH", headers={
+        "Content-Type": "application/json", "User-Agent": USER_AGENT, **(headers or {})})
+    try:
+        with urllib.request.urlopen(req, timeout=timeout, context=_ssl_context()) as r:
+            body = r.read().decode("utf-8", "replace")
+            return r.status, (json.loads(body) if body else None)
+    except urllib.error.HTTPError as e:
+        try:
+            return e.code, json.loads(e.read().decode("utf-8", "replace") or "null")
+        except ValueError:
+            return e.code, None
+    except (urllib.error.URLError, TimeoutError, OSError) as e:
+        return 0, str(e)
+
+
 def _parse_json_or_sse(text: str):
     text = text.strip()
     if text.startswith("{"):

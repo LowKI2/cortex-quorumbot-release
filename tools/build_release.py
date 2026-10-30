@@ -1,11 +1,13 @@
 """Release-Pakete für Cortex QuorumBot bauen.
 
-    python tools/build_release.py v0.3.0 [--out dist]
+    python tools/build_release.py v0.5.0 [--out dist]
 
 Erzeugt aus dem Git-Tag (oder dem aktuellen Ordner, wenn kein Git da ist):
   CortexQuorumBot.zip                    Nutzerpaket – fester Name, damit der Link
                                          .../releases/latest/download/CortexQuorumBot.zip immer stimmt
   cortex-quorumbot-<tag>-quellcode.zip   kompletter Quellcode inkl. Tests
+  CortexQuorumBot-Windows.zip            nur wenn dist/exe/CortexQuorumBot.exe existiert (tools/build_exe.py):
+                                         Windows-Programm ohne Python, fester Name für den Dauer-Link
 
 Das Nutzerpaket enthält keine Tests und Entwicklerdateien, dafür ANLEITUNG.html
 (aus INSTALLATION.md, im BZi-Studio-Stil) und LIESMICH.txt.
@@ -24,6 +26,17 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 USER_PACKAGE = "CortexQuorumBot.zip"
+EXE_PACKAGE = "CortexQuorumBot-Windows.zip"
+EXE_FILE = ROOT / "dist" / "exe" / "CortexQuorumBot.exe"
+EXE_EXTRA = ("config.example.yaml", ".env.example", "LICENSE", "README.md")
+EXE_BATS = {
+    "konfigurator.bat": "CortexQuorumBot.exe konfigurator config.yaml %* & if errorlevel 75 (exit) else (pause)",
+    "start.bat": "if not exist config.yaml echo config.yaml fehlt - erst konfigurator.bat starten. & pause & exit /b 1\r\n"
+                 "CortexQuorumBot.exe bot config.yaml & if errorlevel 75 (exit) else (pause)",
+    "pruefen.bat": "chcp 65001 >nul\r\nCortexQuorumBot.exe pruefen config.yaml & pause",
+}
+BAT_HEAD = ("@echo off\r\nrem Programmaufruf in EINER Zeile am Ende - ein Update ersetzt diese Datei evtl. im laufenden Betrieb.\r\n"
+            "cd /d %~dp0\r\n")
 EXCLUDE_PREFIXES = ("tests/", "tools/", ".github/")
 EXCLUDE_FILES = {".gitignore", ".gitattributes"}
 
@@ -39,6 +52,34 @@ So geht's los
 4. Wenn der Test "Startklar" meldet: start.bat doppelklicken.
 
 Ausführliche Anleitung mit Funktionstest: ANLEITUNG.html (Doppelklick öffnet sie im Browser).
+
+Wichtig
+- Discord-Token und API-Key gehören nur in die Datei .env in diesem Ordner. Niemals weitergeben.
+- Der Bot liest im freigegebenen Kanal mit und schickt die letzten Nachrichten an das gewählte KI-Modell.
+
+Updates: Konfigurator → Bereich "Updates" (Einstellungen bleiben erhalten).
+Neueste Version: https://github.com/LowKI2/cortex-quorumbot-release/releases/latest
+Unabhängiges Projekt von BZi Studio, keine Verbindung zu Anthropic oder Discord. MIT-Lizenz, ohne Gewähr.
+"""
+
+LIESMICH_EXE = """Cortex QuorumBot {version} – Windows-Programm
+=============================================
+
+Discord-Bot für eine Runde aus Menschen und KI-Bots – mit Leitplanken. Diese Variante braucht kein Python.
+
+So geht's los
+1. Diesen Ordner an einen festen Platz legen (nicht in einen Cloud-Ordner, nicht in "Programme").
+2. CortexQuorumBot.exe (oder konfigurator.bat) doppelklicken – der Einrichtungsassistent führt durch alles.
+3. Wenn der Test "Startklar" meldet: start.bat doppelklicken.
+
+Windows-Warnung beim ersten Start
+Das Programm ist nicht digital signiert. Windows SmartScreen zeigt deshalb "Der Computer wurde durch
+Windows geschützt" -> "Weitere Informationen" -> "Trotzdem ausführen". Manche Virenscanner melden
+Programme, die mit PyInstaller gebaut wurden, fälschlich als verdächtig. Wer dem nicht trauen will,
+nimmt die Python-Variante (CortexQuorumBot.zip) – gleicher Inhalt, offener Quellcode.
+
+Für die Abo-Variante muss Claude Code installiert und angemeldet sein (siehe ANLEITUNG.html).
+Updates: Konfigurator -> Bereich "Updates" (Einstellungen bleiben erhalten).
 
 Wichtig
 - Discord-Token und API-Key gehören nur in die Datei .env in diesem Ordner. Niemals weitergeben.
@@ -144,6 +185,9 @@ def write_zip(path: Path, files: dict[str, bytes], prefix: str):
 
 def build(tag: str, out: Path) -> list[Path]:
     files = source_files(tag)
+    m = re.search(rb'VERSION\s*=\s*"([^"]+)"', files.get("version.py", b""))
+    if not m or m.group(1).decode() != tag.lstrip("v"):
+        sys.exit(f"Abbruch: version.py ({m.group(1).decode() if m else '?'}) passt nicht zum Tag {tag}.")
     for leaked in (".env", "config.yaml"):
         if leaked in files:
             sys.exit(f"Abbruch: {leaked} gehört nicht ins Release.")
@@ -158,7 +202,20 @@ def build(tag: str, out: Path) -> list[Path]:
     p_src = out / f"cortex-quorumbot-{tag}-quellcode.zip"
     write_zip(p_user, user, f"CortexQuorumBot-{tag}")
     write_zip(p_src, files, f"cortex-quorumbot-{tag}")
-    return [p_user, p_src]
+    result = [p_user, p_src]
+    if EXE_FILE.exists():
+        win = {n: files[n] for n in EXE_EXTRA if n in files}
+        win["CortexQuorumBot.exe"] = EXE_FILE.read_bytes()
+        win["ANLEITUNG.html"] = user["ANLEITUNG.html"]
+        win["LIESMICH.txt"] = LIESMICH_EXE.format(version=tag).replace("\n", "\r\n").encode("utf-8-sig")
+        for name, body in EXE_BATS.items():
+            win[name] = (BAT_HEAD + body + "\r\n").encode("ascii")
+        p_win = out / EXE_PACKAGE
+        write_zip(p_win, win, f"CortexQuorumBot-{tag}")
+        result.append(p_win)
+    else:
+        print("Hinweis: keine exe gefunden (tools/build_exe.py) – nur Python-Pakete gebaut.")
+    return result
 
 
 def main():

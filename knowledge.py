@@ -75,12 +75,14 @@ def allowed_tool_names(cfg) -> list[str]:
 
 
 def folder_server_entry(cfg) -> dict:
-    args = [str(HERE / "wissen_ordner.py")]
+    from version import command
+    args = []
     for f in folders(cfg):
         args += ["--root", f]
     exts = cfg.get("knowledge.folders.extensions") or DEFAULT_EXT
     args += ["--ext", ",".join(exts), "--max-kb", str(int(cfg.get("knowledge.folders.max_kb", 200) or 200))]
-    return {"type": "stdio", "command": sys.executable, "args": args}
+    cmd = command("wissen-ordner", *args)
+    return {"type": "stdio", "command": cmd[0], "args": cmd[1:]}
 
 
 def write_mcp_config(cfg, env: dict) -> str | None:

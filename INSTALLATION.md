@@ -2,29 +2,35 @@
 
 Dauer: etwa 15 Minuten pro Person. Jeder Mensch in der Runde richtet **seinen eigenen** Bot auf **seinem eigenen** Rechner ein. Diese Anleitung ist für Windows; unter macOS/Linux statt der `.bat`-Dateien die jeweiligen `python …`-Befehle verwenden.
 
-> **Kurzfassung:** Python installieren → Zip entpacken → `konfigurator.bat` doppelklicken → dem Assistenten folgen → Test grün → `start.bat`.
+> **Kurzfassung:** Zip entpacken → `CortexQuorumBot.exe` (Windows-Programm) bzw. `konfigurator.bat` (Python-Variante) doppelklicken → dem Assistenten folgen → Test grün → `start.bat`.
+>
+> **Welche Variante?** Das **Windows-Programm** braucht kein Python und öffnet den Konfigurator im eigenen Fenster. Es ist nicht signiert – Windows warnt beim ersten Start (siehe Schritt 3). Die **Python-Variante** braucht Python, ist dafür offen einsehbar. Beide können sich selbst aktualisieren.
 
 ---
 
 ## 1. Was du brauchst
 
 - [ ] Ein **Discord-Konto** und einen **Server**, auf dem du Bots hinzufügen darfst. Für den ersten Test am besten einen eigenen, leeren Server anlegen (in Discord links auf **+** → **Eigenen erstellen**).
-- [ ] **Python 3.11 oder neuer** – <https://www.python.org/downloads/>. Beim Setup unbedingt **„Add python.exe to PATH“** anhaken.
+- [ ] Nur für die Python-Variante: **Python 3.11 oder neuer** – <https://www.python.org/downloads/>. Beim Setup unbedingt **„Add python.exe to PATH“** anhaken.
 - [ ] Einen **Modellzugang**, eins davon:
     - **Anthropic-API-Key** – <https://console.anthropic.com/settings/keys> (kostet pro Nutzung), oder
     - **Claude-Abo** (Pro/Max) mit **Claude Code** – <https://claude.com/claude-code>, oder
     - **Ollama** lokal – <https://ollama.com>
 
-**Prüfen:** Eingabeaufforderung öffnen (Windows-Taste, `cmd`), `python --version` eingeben. Es muss `Python 3.11` oder höher erscheinen.
+**Prüfen (nur Python-Variante):** Eingabeaufforderung öffnen (Windows-Taste, `cmd`), `python --version` eingeben. Es muss `Python 3.11` oder höher erscheinen.
 
 ## 2. Herunterladen und entpacken
 
-1. Neueste Version laden: **[⬇ CortexQuorumBot.zip](https://github.com/LowKI2/cortex-quorumbot-release/releases/latest/download/CortexQuorumBot.zip)** (alle Versionen: <https://github.com/LowKI2/cortex-quorumbot-release/releases>).
+1. Neueste Version laden – **[⬇ Windows-Programm](https://github.com/LowKI2/cortex-quorumbot-release/releases/latest/download/CortexQuorumBot-Windows.zip)** oder **[⬇ Python-Variante](https://github.com/LowKI2/cortex-quorumbot-release/releases/latest/download/CortexQuorumBot.zip)** (alle Versionen: <https://github.com/LowKI2/cortex-quorumbot-release/releases>).
 2. Entpacken, z. B. nach `Dokumente\Cortex-QuorumBot`. Nicht in einen Ordner, der automatisch in die Cloud synchronisiert wird – dort landen später deine Zugangsdaten.
 
 ## 3. Konfigurator starten
 
-`konfigurator.bat` doppelklicken. Beim ersten Mal werden die Python-Pakete installiert (1–2 Minuten). Danach öffnet sich der Browser mit dem Konfigurator und der **Einrichtungsassistent** startet automatisch.
+**Windows-Programm:** `CortexQuorumBot.exe` doppelklicken. Beim ersten Mal zeigt Windows „Der Computer wurde durch Windows geschützt“ → **Weitere Informationen** → **Trotzdem ausführen** (das Programm ist nicht digital signiert). Der Konfigurator öffnet sich in einem eigenen Fenster.
+
+**Python-Variante:** `konfigurator.bat` doppelklicken. Beim ersten Mal werden die Python-Pakete installiert (1–2 Minuten). Danach öffnet sich der Browser mit dem Konfigurator.
+
+Der **Einrichtungsassistent** startet automatisch.
 
 > Öffnet sich kein Browser: <http://127.0.0.1:8765> von Hand aufrufen. Das Fenster mit der schwarzen Konsole offen lassen, solange du konfigurierst.
 
@@ -96,6 +102,14 @@ Der Bot kann in **lokalen Ordnern** und/oder deinem **MediaVault** nachschlagen 
 4. **Wissen prüfen** – alles grün? Dann Bot neu starten.
 
 > Alles, was der Bot lesen kann, kann er im Kanal auch erzählen. Versteckte Ordner, `.env`, Schlüssel- und Passwortdateien liest er nie.
+
+## Updates
+
+Konfigurator → **Updates** → **Nach Updates suchen** → **installieren**. Vorher den Bot beenden. Deine Einstellungen und Schlüssel bleiben erhalten, der Konfigurator startet danach neu. Bei Problemen: **Vorige Version**. Unter „Nach Updates suchen“ lässt sich einstellen, ob nur per Knopf, mit Hinweis beim Start (Standard) oder automatisch aktualisiert wird.
+
+## Optional: Profilbild
+
+Konfigurator → **Bot & Personen** → **Bild wählen …** – das Bild wird sofort bei Discord gesetzt.
 
 ## Optional: Voice-Join-Melder
 
