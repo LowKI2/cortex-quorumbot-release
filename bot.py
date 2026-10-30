@@ -1,4 +1,4 @@
-"""Claude-Runde: ein Discord-Bot pro Person, Leitplanken siehe guardrails.py.
+"""Cortex QuorumBot: ein Discord-Bot pro Person, Leitplanken siehe guardrails.py.
 
 Start:  python bot.py [config.yaml]
 """

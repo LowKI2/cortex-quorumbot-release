@@ -1,4 +1,4 @@
-"""Konfigurator für die Claude-Runde – lokale Weboberfläche.
+"""Konfigurator für Cortex QuorumBot – lokale Weboberfläche.
 
 Start:  python konfigurator.py [config.yaml] [--port 8765]
 Öffnet http://127.0.0.1:8765 – nur auf diesem Rechner erreichbar.
@@ -67,7 +67,7 @@ def load_config(path: Path) -> dict:
 def save_config(path: Path, data: dict):
     if path.exists():
         shutil.copy2(path, path.with_suffix(".yaml.bak"))
-    header = ("# Claude-Runde – geschrieben vom Konfigurator "
+    header = ("# Cortex QuorumBot – geschrieben vom Konfigurator "
               f"({time.strftime('%Y-%m-%d %H:%M')}).\n"
               "# Erklärungen zu allen Feldern: config.example.yaml oder Konfigurator.\n\n")
     body = yaml.safe_dump(data, allow_unicode=True, sort_keys=False, width=100)
@@ -289,7 +289,7 @@ def make_handler(store: Store):
 
 
 def main():
-    ap = argparse.ArgumentParser(description="Konfigurator für die Claude-Runde")
+    ap = argparse.ArgumentParser(description="Konfigurator für Cortex QuorumBot")
     ap.add_argument("config", nargs="?", default="config.yaml")
     ap.add_argument("--port", type=int, default=8765)
     ap.add_argument("--no-browser", action="store_true")

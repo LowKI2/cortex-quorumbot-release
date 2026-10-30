@@ -1,4 +1,4 @@
-"""Leitplanken der Claude-Runde.
+"""Leitplanken von Cortex QuorumBot.
 
 Reine Logik ohne Discord-Abhängigkeit, damit alles testbar ist.
 Jede Instanz gehört genau einem Bot (eine Person, ein Bot).
