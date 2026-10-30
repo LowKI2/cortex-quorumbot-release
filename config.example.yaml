@@ -1,0 +1,61 @@
+# Claude-Runde – Konfiguration für EINEN Bot.
+# Kopieren nach config.yaml und ausfüllen. Änderungen werden ohne Neustart übernommen.
+# IDs bekommst du in Discord per Rechtsklick → "ID kopieren" (Entwicklermodus einschalten).
+
+bot:
+  name: Nova                     # so heißt dein Bot im Gespräch
+  owner_id: 000000000000000000   # DEINE Discord-User-ID – nur du kannst ihn ansprechen
+  owner_name: Dein Name
+  partner_bot_ids: [000000000000000000]  # User-ID des anderen Bots
+  partner_name: Kai
+  partner_owner_name: Partner
+
+discord:
+  application_id: null           # Developer Portal → Application ID, nur für den Einladungslink
+  token_env: DISCORD_TOKEN       # Name der Variable in .env
+  allowed_channel_ids: []        # leer = alle Kanäle, besser: nur euren Runden-Kanal
+  command_prefix: "!"
+
+llm:
+  # anthropic   = Anthropic-API mit Key
+  # claude_code = dein Claude-Abo über Claude Code (claude -p), kein Key nötig
+  # openai      = jede OpenAI-kompatible API, z. B. Ollama
+  provider: anthropic
+  api_key_env: ANTHROPIC_API_KEY # nur anthropic/openai
+  base_url: null                 # Ollama z. B.: http://localhost:11434/v1
+  model: claude-sonnet-5-5       # bei claude_code auch Kurzform: sonnet, opus, haiku
+  max_tokens: 800                # nur anthropic/openai
+  temperature: 0.7               # nur anthropic/openai
+
+# Nur für provider: claude_code
+claude_code:
+  path: claude                   # Programm, falls nicht im PATH: voller Pfad zu claude.exe
+  workdir: ./claude-sandbox      # leerer Arbeitsordner, damit keine Projekt-CLAUDE.md geladen wird
+  timeout_seconds: 180
+  # Ohne Einträge hier hat der Bot KEINE Werkzeuge (kein Bash, kein Dateizugriff, kein MCP).
+  mcp_config: null               # z. B. ./mcp-freigabe.json – nur Server, die der Bot nutzen darf
+  allowed_tools: []              # z. B. [mcp__cortex__read_note, mcp__cortex__search_notes]
+
+persona:
+  max_reply_chars: 1500
+  system_prompt: |
+    Du bist neugierig, direkt und ehrlich. Du denkst bei Projekten mit,
+    stellst Rückfragen und sagst klar, wenn du etwas für eine schlechte Idee hältst.
+    Du sprichst Deutsch.
+
+context:
+  max_messages: 30               # so viele Nachrichten Verlauf liest der Bot mit
+
+guardrails:
+  respond_to_owner: true
+  require_mention_from_owner: true   # false = antwortet auf jede Nachricht seines Besitzers
+  allow_bot_dialog: true
+  dialog_default_rounds: 6           # Bot-Antworten pro Dialog (beide Bots zusammen)
+  dialog_max_rounds: 12              # Obergrenze, auch wenn jemand "!dialog 50" schreibt (Code-Notbremse: 30)
+  dialog_max_minutes: 5              # Dialog endet spätestens so lange nach der letzten Menschen-Nachricht
+  stop_words: [stopp, stop, halt]    # beendet einen Dialog, darf jeder Mensch
+  repetition_threshold: 0.85         # wiederholt sich der Bot, steigt er aus
+  cooldown_seconds: 2
+  max_requests_per_hour: 60         # beim Abo die wichtigste Bremse fürs Kontingent
+  max_tokens_per_day: 300000
+  # settable_keys: [...]            # optional: welche Schlüssel per !set änderbar sind

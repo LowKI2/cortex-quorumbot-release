@@ -1,0 +1,15 @@
+# Geheimnisse und persönliche Konfiguration – niemals einchecken
+.env
+config.yaml
+*.overrides.json
+*.status.json
+*.budget.json
+*.yaml.bak
+*.yaml.tmp
+
+# Laufzeit
+claude-sandbox/
+.venv/
+__pycache__/
+.pytest_cache/
+*.log
