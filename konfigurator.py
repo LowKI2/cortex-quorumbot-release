@@ -27,6 +27,7 @@ from config import Config
 from settings_schema import FIELDS, SECTIONS, check_consistency, to_value
 
 HERE = Path(__file__).resolve().parent
+ASSETS = {"/assets/avatar.png", "/assets/icon-256.png"}
 INVITE_PERMISSIONS = 1024 + 2048 + 65536  # Kanäle sehen, Nachrichten senden, Verlauf lesen
 SECRET_KEYS_DEFAULT = ("discord.token_env", "DISCORD_TOKEN"), ("llm.api_key_env", "ANTHROPIC_API_KEY")
 
@@ -350,6 +351,8 @@ class Store:
         if not auth:
             return {"ok": False, "errors": ["Erst den Discord-Token setzen."]}
         data_url = (data_url or "").strip()
+        if data_url == "standard":                         # mitgeliefertes Cortex-Logo
+            data_url = "data:image/png;base64," + base64.b64encode((HERE / "assets" / "avatar.png").read_bytes()).decode()
         if data_url:
             head, _, b64 = data_url.partition(",")
             mime = head[5:].split(";")[0] if head.startswith("data:") else ""
@@ -420,6 +423,31 @@ class Store:
             return {"ok": False, "errors": ["Abgebrochen."]}
         return {"ok": True, "path": str(Path(res))}
 
+    def stop_bot(self) -> dict:
+        """Laufenden Bot beenden (Prozess-ID aus dem Lebenszeichen)."""
+        try:
+            st = json.loads(self.status_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return {"ok": False, "errors": ["Der Bot läuft nicht."]}
+        pid = int(st.get("pid") or 0)
+        if time.time() - float(st.get("ts", 0)) > 60 or not pid:
+            return {"ok": False, "errors": ["Der Bot läuft nicht."]}
+        import subprocess
+        try:
+            if sys.platform == "win32":
+                subprocess.run(["taskkill", "/PID", str(pid), "/T", "/F"], capture_output=True, timeout=15)
+            else:
+                import signal
+                os.kill(pid, signal.SIGTERM)
+        except (OSError, subprocess.SubprocessError) as e:
+            return {"ok": False, "errors": [f"Beenden fehlgeschlagen: {e}"]}
+        st["ts"] = 0
+        try:
+            self.status_path.write_text(json.dumps(st), encoding="utf-8")
+        except OSError:
+            pass
+        return {"ok": True}
+
     def start_bot(self) -> dict:
         """Startet den Bot in einem eigenen Fenster (nur wenn er nicht schon läuft)."""
         try:
@@ -477,6 +505,8 @@ def make_handler(store: "Store"):
                 return self._json(store.invite())
             if self.path == "/api/discord/identity":
                 return self._json(store.discord_identity())
+            if self.path in ASSETS:
+                return self._send(200, (HERE / "assets" / self.path.rsplit("/", 1)[1]).read_bytes(), "image/png")
             if self.path == "/api/discord/profile":
                 return self._json(store.bot_profile())
             self._json({"error": "nicht gefunden"}, 404)
@@ -499,6 +529,7 @@ def make_handler(store: "Store"):
                 "/api/test": store.test_llm,
                 "/api/check": lambda: store.check(bool(body.get("with_request", True))),
                 "/api/bot/start": store.start_bot,
+                "/api/bot/stop": store.stop_bot,
                 "/api/knowledge/check": store.knowledge_check,
                 "/api/pick_folder": store.pick_folder,
                 "/api/discord/avatar": lambda: store.set_avatar(str(body.get("image", ""))),
@@ -527,6 +558,7 @@ def main():
     from version import frozen
     store = Store(cfg_path)
     import updater
+    updater.cleanup_old()
     mode = flat_get(load_config(cfg_path), "update.mode") or FIELDS["update.mode"]["default"]   # Standard: manuell
     if updater.auto_update(mode, "konfigurator", cfg_path):
         sys.exit(updater.RESTART_CODE)

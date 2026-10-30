@@ -24,6 +24,7 @@ def main():
     cmd = [sys.executable, "-m", "PyInstaller", "--noconfirm", "--clean", "--onefile",
            "--name", "CortexQuorumBot", "--distpath", str(out), "--workpath", str(work), "--specpath", str(work),
            "--add-data", f"{ROOT / 'konfigurator.html'};.",
+           "--add-data", f"{ROOT / 'assets'};assets",
            "--collect-submodules", "discord", "--collect-all", "webview",
            "--hidden-import", "truststore",
            str(ROOT / "quorumbot.py")]

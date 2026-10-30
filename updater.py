@@ -221,6 +221,18 @@ def rollback(target: Path | None = None) -> dict:
     return {"ok": True, "restored": meta.get("version")}
 
 
+def cleanup_old(target: Path | None = None) -> int:
+    """Übrig gebliebene alte exe (*.alt) und halbe Downloads (*.neu) wegräumen."""
+    n = 0
+    for p in list((target or app_dir()).glob("*.alt")) + list((target or app_dir()).glob("*.neu")):
+        try:
+            p.unlink()
+            n += 1
+        except OSError:
+            pass                                     # läuft evtl. noch – beim nächsten Start
+    return n
+
+
 # --- Neustart -------------------------------------------------------------
 def restart(kind: str, cfg_path: str | Path, extra: list[str] | None = None):
     """Programmteil (bot/konfigurator) frisch starten – unter Windows über das Startskript,

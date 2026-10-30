@@ -166,3 +166,19 @@ def test_knowledge_startet_ordnerserver_ueber_version_command(tmp_path, monkeypa
     monkeypatch.setattr(version, "frozen", lambda: True)
     e = knowledge.folder_server_entry(c)
     assert e["command"] == sys.executable and e["args"][0] == "wissen-ordner"
+
+
+def test_standard_avatar_und_aufraeumen(tmp_path):
+    from konfigurator import Store
+    (tmp_path / ".env").write_text("DISCORD_TOKEN=t\n")
+    sent = []
+    assert Store(tmp_path / "config.yaml").set_avatar("standard", patch=lambda u, p, h: sent.append(p) or (200, {}))["ok"]
+    assert sent[0]["avatar"].startswith("data:image/png;base64,iVBOR")
+    (tmp_path / "CortexQuorumBot.exe.alt").write_bytes(b"x")
+    (tmp_path / "bot.py.neu").write_bytes(b"x")
+    assert updater.cleanup_old(tmp_path) == 2 and not list(tmp_path.glob("*.alt"))
+
+
+def test_bot_beenden_ohne_lauf(tmp_path):
+    from konfigurator import Store
+    assert not Store(tmp_path / "config.yaml").stop_bot()["ok"]

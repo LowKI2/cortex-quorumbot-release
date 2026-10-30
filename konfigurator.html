@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Cortex QuorumBot · Konfigurator</title>
+<link rel="icon" href="/assets/icon-256.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
@@ -247,6 +248,8 @@ details[open] > summary::before{content:"–"}
 
 .kn-extra{display:grid;gap:var(--space-4);margin-top:var(--space-5);padding-top:var(--space-4);border-top:1px solid var(--line)}
 .kn-actions{display:flex;gap:var(--space-3);align-items:center;flex-wrap:wrap}
+.logo.img{background:#000;overflow:hidden;padding:0}
+.logo.img img{width:100%;height:100%;object-fit:cover;display:block}
 .av{display:flex;gap:var(--space-4);align-items:center;flex-wrap:wrap}
 .av img{width:72px;height:72px;border-radius:50%;object-fit:cover;border:1px solid var(--line-strong);background:var(--bg-3)}
 .av .ph{width:72px;height:72px;border-radius:50%;border:1px dashed var(--line-strong);display:grid;place-items:center;color:var(--text-2)}
@@ -326,9 +329,7 @@ ol.howto code,.wiz-b code{font-family:var(--font-mono);font-size:var(--text-xs);
 <div class="app">
   <aside>
     <div class="brand">
-      <div class="logo" aria-hidden="true">
-        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="2.2"/><circle cx="12" cy="4.5" r="1.6"/><circle cx="19.5" cy="12" r="1.6"/><circle cx="12" cy="19.5" r="1.6"/><circle cx="4.5" cy="12" r="1.6"/><path d="M12 6.4v3.3M17.6 12h-3.3M12 17.6v-3.3M6.4 12h3.3"/></svg>
-      </div>
+      <div class="logo img" aria-hidden="true"><img src="/assets/icon-256.png" alt=""></div>
       <div><b>Cortex QuorumBot</b><small class="label">BZi Studio · Konfigurator</small></div>
     </div>
     <nav class="side" id="nav" aria-label="Abschnitte"></nav>
@@ -373,6 +374,7 @@ ol.howto code,.wiz-b code{font-family:var(--font-mono);font-size:var(--text-xs);
 
 <div class="actions"><div class="in">
   <button class="primary" id="save"><svg class="i"><use href="#i-save"/></svg>Speichern</button>
+  <button id="botbtn"><svg class="i"><use href="#i-play"/></svg><span>Bot starten</span></button>
   <button id="check"><svg class="i"><use href="#i-check"/></svg>Vollständiger Test</button>
   <button id="test" class="ghost"><svg class="i"><use href="#i-play"/></svg>Testanfrage</button>
   <button id="wizbtn" class="ghost"><svg class="i"><use href="#i-bot"/></svg>Assistent</button>
@@ -385,7 +387,7 @@ ol.howto code,.wiz-b code{font-family:var(--font-mono);font-size:var(--text-xs);
   <div class="wiz">
     <div class="wiz-h">
       <div class="row">
-        <div class="logo" aria-hidden="true" style="width:30px;height:30px;border-radius:9px"><svg viewBox="0 0 24 24" style="width:16px;height:16px"><circle cx="12" cy="12" r="2.2"/><circle cx="12" cy="4.5" r="1.6"/><circle cx="19.5" cy="12" r="1.6"/><circle cx="12" cy="19.5" r="1.6"/><circle cx="4.5" cy="12" r="1.6"/><path d="M12 6.4v3.3M17.6 12h-3.3M12 17.6v-3.3M6.4 12h3.3"/></svg></div>
+        <div class="logo img" aria-hidden="true" style="width:30px;height:30px;border-radius:9px"><img src="/assets/icon-256.png" alt=""></div>
         <div><h2 id="wiz-title">Einrichtung</h2><span class="label" id="wiz-step-label"></span></div>
         <button class="ghost small x" id="wiz-close" aria-label="Assistent schließen">Schließen</button>
       </div>
@@ -443,6 +445,10 @@ function renderHeader(){
   if(S.status && S.status.age < 90){ led.className="led on"; led.lastChild.textContent = `läuft · ${S.status.online_as}`; }
   else if(S.status){ led.className="led off"; led.lastChild.textContent = `aus · vor ${fmtAge(S.status.age)}`; }
   else { led.className="led"; led.lastChild.textContent = S.exists ? "noch nie gestartet" : "neue Konfiguration"; }
+  const run = !!(S.status && S.status.age < 90);
+  const bb = $("#botbtn"); bb.dataset.run = run ? "1" : "";
+  bb.querySelector("span").textContent = run ? "Bot beenden" : "Bot starten";
+  bb.querySelector("use").setAttribute("href", run ? "#i-undo" : "#i-play");
   const lim = Number(S.values["guardrails.max_tokens_per_day"]) || 1;
   const used = S.budget ? Number(S.budget.tokens) : 0;
   $("#tok").textContent = `${nf(used)} / ${nf(lim)}`;
@@ -507,7 +513,7 @@ function renderSections(){
         <div class="av"><span class="ph" id="av-img">${icon("image")}</span>
           <input type="file" id="av-file" accept="image/png,image/jpeg,image/gif,image/webp" hidden>
           <button id="av-pick">${icon("image")}Bild wählen …</button>
-          <button class="ghost" id="av-reset">Standardbild</button></div>
+          <button class="ghost" id="av-reset"><img src="/assets/icon-256.png" alt="" style="width:18px;height:18px;border-radius:50%">Cortex-Logo</button></div>
         <span class="help">Wird sofort bei Discord gesetzt (PNG, JPG, GIF, WebP, max. 8 MB, am besten quadratisch). Geht erst, wenn der Discord-Token gesetzt ist. Discord erlaubt nur wenige Wechsel kurz hintereinander.</span></div></div>`
       : sec.title === "Updates" ? `<div class="kn-extra"><div class="up-box" id="up-box"></div></div>` : "";
     card.innerHTML = `<div class="card-h">${icon(ic)}<h2>${esc(sec.title)}</h2>${nOv?`<span class="tag warn" style="margin-left:auto">${nOv} per Chat</span>`:""}</div><div class="grid">${block(basic)}</div>${extra}${extra2}`
@@ -537,7 +543,7 @@ async function sendAvatar(image){
 }
 document.addEventListener("click", e => {
   if(e.target.closest("#av-pick")) $("#av-file").click();
-  if(e.target.closest("#av-reset") && confirm("Standardbild von Discord verwenden?")) sendAvatar("");
+  if(e.target.closest("#av-reset") && confirm("Cortex-Logo als Profilbild setzen?")) sendAvatar("standard");
 });
 document.addEventListener("change", e => {
   if(e.target.id !== "av-file" || !e.target.files[0]) return;
@@ -713,6 +719,22 @@ $("#invite").onclick = async () => {
 };
 
 $("#check").onclick = () => fullCheck();
+$("#botbtn").onclick = async () => {
+  const bb = $("#botbtn"), run = !!bb.dataset.run;
+  if(!run && dirty) return msg("Erst speichern, dann starten.","warn");
+  if(run && !confirm("Bot beenden?")) return;
+  bb.disabled = true; msg(run ? "Bot wird beendet …" : "Bot startet in einem eigenen Fenster …","info");
+  const r = await api(run ? "/api/bot/stop" : "/api/bot/start",{});
+  if(!r.ok){ bb.disabled = false; return msg(r.errors.join(" "),"err"); }
+  for(let i=0;i<(run?5:25);i++){
+    await new Promise(x=>setTimeout(x,1500));
+    const s = await api("/api/state"); S.status = s.status; renderHeader();
+    if(!!(s.status && s.status.age < 90) !== run) break;
+  }
+  bb.disabled = false;
+  const now = !!(S.status && S.status.age < 90);
+  msg(now ? `Bot läuft als ${S.status.online_as||"…"}.` : (run ? "Bot beendet." : "Bot noch nicht online – Fenster des Bots prüfen."), now!==run ? "ok" : "warn");
+};
 document.addEventListener("click", async e => {
   const pf = e.target.closest("[data-pickfolder]"); if(!pf) return;
   pf.disabled = true; msg("Ordner-Dialog ist offen (ggf. hinter dem Browser) …","info");

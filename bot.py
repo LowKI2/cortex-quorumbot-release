@@ -221,6 +221,7 @@ def main():
     load_dotenv(cfg_path.parent / ".env")
     cfg = Config(cfg_path)
     import updater
+    updater.cleanup_old()
     if updater.auto_update(cfg.get("update.mode", "manuell"), "bot", cfg_path, log=logging.info):
         sys.exit(updater.RESTART_CODE)
     token = os.environ.get(cfg.get("discord.token_env", "DISCORD_TOKEN"), "")
