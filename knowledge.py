@@ -1,8 +1,9 @@
 """Wissensquellen für die Abo-Variante (Claude Code) – nur lesend.
 
-Zwei Quellen, einzeln schaltbar:
-  - MediaVault (Adresse + eigener Schlüssel, nur Lese-Werkzeuge)
+Quellen, einzeln schaltbar:
   - lokale Ordner (über den mitgelieferten Lese-Server wissen_ordner.py)
+  - GitHub-Repos (wissen_github.py lädt sie in einen Zwischenspeicher, gelesen wie lokale Ordner)
+  - MediaVault (nur für den eigenen Server: Adresse + eigener Schlüssel, nur Lese-Werkzeuge)
 Die MCP-Konfiguration wird pro Antwort in eine temporäre Datei geschrieben und danach gelöscht –
 niemand muss JSON von Hand anlegen.
 """
@@ -52,8 +53,22 @@ def folders_on(cfg) -> bool:
     return bool(cfg.get("knowledge.folders.enabled")) and cfg.get("llm.provider") == "claude_code" and bool(folders(cfg))
 
 
+def github_on(cfg) -> bool:
+    import wissen_github
+    return bool(cfg.get("knowledge.github.enabled")) and cfg.get("llm.provider") == "claude_code" and bool(wissen_github.repos(cfg))
+
+
+def read_roots(cfg) -> list[str]:
+    """Alle Ordner, die der Lese-Server freigibt: lokale Wissensordner + geladene GitHub-Repos."""
+    roots = folders(cfg) if folders_on(cfg) else []
+    if github_on(cfg):
+        import wissen_github
+        roots += wissen_github.cached_dirs(cfg)
+    return roots
+
+
 def enabled(cfg) -> bool:
-    return mediavault_on(cfg) or folders_on(cfg)
+    return mediavault_on(cfg) or bool(read_roots(cfg))
 
 
 def base_url(cfg) -> str:
@@ -69,7 +84,7 @@ def tools(cfg) -> list[str]:
 
 def allowed_tool_names(cfg) -> list[str]:
     names = [f"mcp__{SERVER}__{t}" for t in tools(cfg)] if mediavault_on(cfg) else []
-    if folders_on(cfg):
+    if read_roots(cfg):
         names += [f"mcp__{FOLDER_SERVER}__{t}" for t in FOLDER_TOOLS]
     return names
 
@@ -77,7 +92,7 @@ def allowed_tool_names(cfg) -> list[str]:
 def folder_server_entry(cfg) -> dict:
     from version import command
     args = []
-    for f in folders(cfg):
+    for f in read_roots(cfg):
         args += ["--root", f]
     exts = cfg.get("knowledge.folders.extensions") or DEFAULT_EXT
     args += ["--ext", ",".join(exts), "--max-kb", str(int(cfg.get("knowledge.folders.max_kb", 200) or 200))]
@@ -95,7 +110,7 @@ def write_mcp_config(cfg, env: dict) -> str | None:
         if not key or not url:
             raise RuntimeError("MediaVault-Wissen ist an, aber Adresse oder Schlüssel fehlen (Konfigurator → Wissen).")
         servers[SERVER] = {"type": "http", "url": f"{url}/mcp", "headers": {"Authorization": f"Bearer {key}"}}
-    if folders_on(cfg):
+    if read_roots(cfg):
         servers[FOLDER_SERVER] = folder_server_entry(cfg)
     data = {"mcpServers": servers}
     fd, path = tempfile.mkstemp(prefix="quorum-mcp-", suffix=".json")
@@ -114,8 +129,9 @@ def prompt_rules(cfg) -> list[str]:
     sources = []
     if mediavault_on(cfg):
         sources.append(f"MediaVault (Werkzeuge: {', '.join(tools(cfg))})")
-    if folders_on(cfg):
-        sources.append("lokale Wissensordner (Werkzeuge: list_files, search, read_file)")
+    if folders_on(cfg) or github_on(cfg):
+        what = " und ".join(x for x, on in (("lokale Wissensordner", folders_on(cfg)), ("GitHub-Repos", github_on(cfg))) if on)
+        sources.append(f"{what} (Werkzeuge: list_files, search, read_file; Repos heißen Besitzer-Repo)")
     return [
         f"Du hast lesenden Zugriff auf: {'; '.join(sources)}. "
         "Nutze das, wenn eine Frage Projekte, Dateien oder hinterlegtes Wissen betrifft, und nenne kurz die Quelle (Projekt/Datei).",

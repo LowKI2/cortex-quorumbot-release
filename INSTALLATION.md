@@ -100,6 +100,12 @@ Der Bot kann in **lokalen Ordnern** nachschlagen – nur lesend.
 2. **Ordner wählen …** → Ordner aussuchen → **Speichern**. Am besten einen eigenen Wissensordner nehmen, nicht ganz „Dokumente“.
 3. **Wissen prüfen** – alles grün? Dann Bot neu starten.
 
+**GitHub-Repos** (auch mehrere, auch private):
+
+1. „GitHub-Repos nutzen“ einschalten, Repos eintragen – eins pro Zeile, z. B. `BBZGames/Bratratz_lore` – **Speichern**.
+2. Nur für private Repos: auf GitHub unter *Settings → Developer settings → Fine-grained tokens* einen Token anlegen – nur diese Repos, **Contents: Read-only** – und im Konfigurator bei `GITHUB_TOKEN` einfügen → **Setzen**.
+3. **Repos jetzt laden** → **Wissen prüfen**. Der laufende Bot holt danach selbst neue Stände (Standard: stündlich).
+
 > Alles, was der Bot lesen kann, kann er im Kanal auch erzählen. Versteckte Ordner, `.env`, Schlüssel- und Passwortdateien liest er nie.
 
 ## Updates

@@ -100,6 +100,16 @@ SECTIONS = [
          "help": "Ein Ordner pro Zeile, z. B. C:\\Users\\Name\\Documents\\Wissen – oder unten „Ordner wählen …“. Nur Ordner, deren Inhalt in die Runde darf."},
         {"key": "knowledge.folders.extensions", "label": "Dateitypen", "type": "list", "default": KNOWLEDGE_EXT,
          "show_if": {"knowledge.folders.enabled": [True]}, "advanced": True, "help": "Nur Textformate, eins pro Zeile."},
+        {"key": "knowledge.github.enabled", "label": "GitHub-Repos nutzen", "type": "bool", "default": False,
+         "help": "Nur mit Anbieter „Claude-Abo“. Der Bot lädt die Repos als Kopie auf diesen Rechner und darf darin Textdateien lesen – nichts ändern."},
+        {"key": "knowledge.github.repos", "label": "Repos", "type": "list", "show_if": {"knowledge.github.enabled": [True]},
+         "help": "Eins pro Zeile: Besitzer/Repo oder die GitHub-Adresse, optional mit @Branch (z. B. BBZGames/Bratratz_lore@main). Private Repos brauchen GITHUB_TOKEN unter Zugangsdaten."},
+        {"key": "knowledge.github.refresh_minutes", "label": "Aktualisieren alle (Minuten)", "type": "int", "min": 5, "max": 1440,
+         "default": 60, "show_if": {"knowledge.github.enabled": [True]}, "help": "Der laufende Bot holt neue Stände in diesem Abstand – nur wenn sich etwas geändert hat."},
+        {"key": "knowledge.github.max_mb", "label": "Max. Repo-Größe (MB)", "type": "int", "min": 1, "max": 1000, "default": 100,
+         "show_if": {"knowledge.github.enabled": [True]}, "advanced": True},
+        {"key": "knowledge.github.token_env", "label": "Name der Token-Variable in .env", "type": "text", "default": "GITHUB_TOKEN",
+         "show_if": {"knowledge.github.enabled": [True]}, "advanced": True},
         {"key": "features.mediavault", "label": "MediaVault-Anbindung anzeigen", "type": "bool", "default": False, "advanced": True,
          "help": "Nur für einen eigenen MediaVault-Server. Blendet oben die MediaVault-Einstellungen ein."},
         {"key": "knowledge.folders.max_kb", "label": "Max. Dateigröße (KB)", "type": "int", "min": 10, "max": 5000, "default": 200,
@@ -231,6 +241,18 @@ def check_consistency(get) -> tuple[list[str], list[str]]:
             warnings.append("Wissensordner funktionieren nur mit Anbieter „Claude-Abo“ – bei anderen Anbietern bleiben sie aus.")
         if not get("knowledge.folders.paths"):
             warnings.append("Wissensordner sind an, aber es ist kein Ordner eingetragen.")
+    if get("knowledge.github.enabled"):
+        if get("llm.provider") != "claude_code":
+            warnings.append("GitHub-Wissen funktioniert nur mit Anbieter „Claude-Abo“ – bei anderen Anbietern bleibt es aus.")
+        specs = get("knowledge.github.repos") or []
+        if not specs:
+            warnings.append("GitHub-Repos sind an, aber es ist kein Repo eingetragen.")
+        import wissen_github
+        for sp in specs:
+            try:
+                wissen_github.parse(sp)
+            except wissen_github.RepoError as e:
+                errors.append(f"GitHub: {e}")
     if get("voice_notifier.enabled"):
         if not get("voice_notifier.watch"):
             warnings.append("Voice-Melder ist an, aber es ist kein Sprachraum → Textkanal eingetragen.")

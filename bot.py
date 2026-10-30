@@ -63,6 +63,25 @@ class RundenBot(discord.Client):
         from slash import setup_slash
         setup_slash(self)
         self.loop.create_task(self._heartbeat())
+        self.loop.create_task(self._github_loop())
+
+    async def _github_loop(self):
+        """GitHub-Wissen im Hintergrund aktuell halten (nur bei Änderungen wird neu geladen)."""
+        import wissen_github
+        from dotenv import dotenv_values
+        await asyncio.sleep(3)
+        while not self.is_closed():
+            try:
+                if self.cfg.get("knowledge.github.enabled") and wissen_github.repos(self.cfg) and wissen_github.due(self.cfg):
+                    env = {**os.environ, **dotenv_values(self.cfg.path.parent / ".env")}
+                    for r in await asyncio.to_thread(wissen_github.sync, self.cfg, env):
+                        if r["ok"] and r.get("updated"):
+                            log.info("GitHub-Wissen: %s@%s geladen (%s Dateien)", r["repo"], r["ref"], r["files"])
+                        elif not r["ok"]:
+                            log.warning("GitHub-Wissen: %s", r["error"])
+            except Exception as e:  # noqa: BLE001
+                log.warning("GitHub-Wissen: Abgleich fehlgeschlagen (%s)", e)
+            await asyncio.sleep(120)
 
     async def _heartbeat(self):
         """Lebenszeichen für den Konfigurator (config.status.json)."""

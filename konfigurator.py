@@ -124,6 +124,10 @@ class Store:
         names = [flat_get(data, k) or d for k, d in SECRET_KEYS_DEFAULT]
         if flat_get(data, "knowledge.mediavault.enabled") and knowledge.KEY_ENV not in names:
             names.append(knowledge.KEY_ENV)
+        if flat_get(data, "knowledge.github.enabled"):
+            gh = flat_get(data, "knowledge.github.token_env") or "GITHUB_TOKEN"
+            if gh not in names:
+                names.append(gh)
         return names
 
     def state(self) -> dict:
@@ -372,6 +376,22 @@ class Store:
         msg = res.get("message") if isinstance(res, dict) else None
         return {"ok": False, "errors": [f"Discord hat abgelehnt ({st}{': ' + msg if msg else ''})."]}
 
+    def github_sync(self) -> dict:
+        """Knopf „Repos jetzt laden“: alle eingetragenen Repos neu holen."""
+        if not self.cfg_path.exists():
+            return {"ok": False, "errors": ["Erst speichern."]}
+        import wissen_github
+        cfg, env = self._cfg_env()
+        if not wissen_github.repos(cfg):
+            return {"ok": False, "errors": ["Kein Repo eingetragen (und gespeichert)."]}
+        res = wissen_github.sync(cfg, env, force=True)
+        return {"ok": True, "results": [
+            {"name": "GitHub-Repo", "status": "ok" if r["ok"] else "fail",
+             "detail": (f"{r['repo']}@{r['ref']} – {r['files']} Dateien geladen" if r["ok"] else r["error"]), "fix": ""}
+            for r in res],
+            "summary": "Geladen" if all(r["ok"] for r in res) else "Teilweise fehlgeschlagen",
+            "ready": all(r["ok"] for r in res)}
+
     def knowledge_check(self) -> dict:
         """Nur die MediaVault-Prüfung (ohne Modell-Anfrage) – für den Knopf „Verbindung prüfen“."""
         if not self.cfg_path.exists():
@@ -532,6 +552,7 @@ def make_handler(store: "Store"):
                 "/api/bot/stop": store.stop_bot,
                 "/api/knowledge/check": store.knowledge_check,
                 "/api/pick_folder": store.pick_folder,
+                "/api/github/sync": store.github_sync,
                 "/api/discord/avatar": lambda: store.set_avatar(str(body.get("image", ""))),
                 "/api/update/check": lambda: store.update_check(force=bool(body.get("force"))),
                 "/api/update/install": store.update_install,

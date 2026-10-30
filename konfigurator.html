@@ -507,6 +507,9 @@ function renderSections(){
         </div>
         <div class="kn-extra" data-show='${esc(JSON.stringify({"knowledge.folders.enabled":[true]}))}'>
           <div class="kn-actions"><button data-pickfolder="1">${icon("book")}Ordner wählen …</button><span class="help">öffnet den Ordner-Dialog von Windows und fügt den Ordner der Liste hinzu</span></div></div>
+        <div class="kn-extra" data-show='${esc(JSON.stringify({"knowledge.github.enabled":[true]}))}'>
+          <div class="kn-actions"><button data-ghsync="1">${icon("download")}Repos jetzt laden</button><span class="help">lädt alle eingetragenen Repos neu (erst speichern). Privat? GITHUB_TOKEN unter Zugangsdaten setzen – Fine-grained-Token, nur „Contents: Read-only“ für genau diese Repos.</span></div>
+          <div class="kn-out gh-out"></div></div>
         <div class="kn-extra"><div class="kn-actions"><button data-kncheck="1">${icon("check")}Wissen prüfen</button><span class="help">Prüft die eingeschalteten Quellen (Ordner vorhanden, Anzahl lesbarer Dateien …) – ohne Modell-Anfrage. „Vollständiger Test“ fragt zusätzlich echt ab.</span></div>
         <div class="kn-out"></div></div>` : "";
     const extra2 = sec.title === "Bot & Personen" ? `<div class="kn-extra"><div class="f"><label>Profilbild des Bots in Discord</label>
@@ -745,6 +748,14 @@ document.addEventListener("click", async e => {
   if(!lines.includes(r.path)) lines.push(r.path);
   ta.value = lines.join("\n"); dirty = true;
   msg(`Ordner hinzugefügt: ${r.path} – jetzt speichern.`,"warn");
+});
+document.addEventListener("click", async e => {
+  const b = e.target.closest("[data-ghsync]"); if(!b) return;
+  if(dirty) return msg("Erst speichern, dann laden.","warn");
+  const out = b.closest(".kn-extra").querySelector(".gh-out");
+  b.disabled = true; out.innerHTML = `<p style="display:flex;gap:10px;align-items:center"><span class="spin"></span>Lade Repos …</p>`;
+  const r = await api("/api/github/sync",{}); b.disabled = false;
+  out.innerHTML = r.ok ? resultsHtml(r) : `<div class="verdict bad">${esc(r.errors.join(" "))}</div>`;
 });
 document.addEventListener("click", async e => {
   const b = e.target.closest("[data-kncheck]"); if(!b) return;

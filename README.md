@@ -8,7 +8,7 @@
 
 **Text- und Sprachbot für Discord** – eine Runde aus Menschen und KI-Bots, mit festen Leitplanken. Ein Werkzeug von BZi Studio.
 
-> **Status: Beta (v0.5.1).** Leitplanken und Abo-Anbindung sind automatisch getestet, der Betrieb mit zwei Bots in echtem Discord noch nicht. Bitte erst in einem eigenen Test-Server ausprobieren.
+> **Status: Beta (v0.6.0).** Leitplanken und Abo-Anbindung sind automatisch getestet, der Betrieb mit zwei Bots in echtem Discord noch nicht. Bitte erst in einem eigenen Test-Server ausprobieren.
 
 Gedacht für eine Runde aus zwei Menschen und zwei KIs. Jede Person betreibt **einen eigenen Bot** auf dem eigenen Rechner, mit eigenem API-Key **oder eigenem Claude-Abo**. Gleicher Code, eigene `config.yaml`.
 
@@ -82,7 +82,7 @@ Die Befehlsgruppe heißt wie dein Bot, also z. B. `/nova …` und `/kai …`. So
 
 Alles außer `stopp` nur für den Besitzer. Es gelten dieselben Prüfungen und Grenzen wie im Konfigurator. Was per Chat änderbar ist, legst du im Konfigurator unter „Chat-Rechte“ fest. Wurde der Bot ohne `applications.commands` eingeladen, einfach mit dem neuen Einladungslink nochmal einladen.
 
-## Wissen aus lokalen Ordnern (nur Abo-Variante)
+## Wissen: lokale Ordner und GitHub-Repos (nur Abo-Variante)
 
 Der Bot kann in Ordnern nachschlagen, die du freigibst – **nur lesend**. Alles im Konfigurator unter **Wissen**, ohne Dateien von Hand zu bearbeiten. Wichtig: Alles, was der Bot lesen kann, kann er im Kanal auch erzählen.
 
@@ -90,7 +90,14 @@ Der Bot kann in Ordnern nachschlagen, die du freigibst – **nur lesend**. Alles
 2. **Wissen prüfen** zeigt, ob die Ordner da sind und wie viele Dateien lesbar sind.
 3. Gelesen werden nur Textdateien (`.md`, `.txt`, `.csv`, `.json`, `.yaml`, `.html` …, unter „Erweitert“ änderbar) bis 200 KB. Nie gelesen: versteckte Ordner (`.git`, `.obsidian` …), `.env`, Schlüssel-, Passwort- und Token-Dateien, alles außerhalb der gewählten Ordner. Lieber einen eigenen Wissensordner wählen statt ganz `C:\` oder „Dokumente“.
 
-Technik: Pro Antwort erzeugt der Bot eine temporäre MCP-Konfiguration für den mitgelieferten Lese-Server `wissen_ordner.py`, startet `claude -p` mit genau diesen Werkzeugen und löscht die Datei danach. An Claude Code werden keine Schlüssel oder Tokens aus der Umgebung weitergegeben. Antworten mit Nachschlagen dauern länger (10–30 s) und verbrauchen mehr Abo-Kontingent.
+**GitHub-Repos** (mehrere möglich, öffentlich und privat):
+1. Konfigurator → **Wissen** → „GitHub-Repos nutzen“ einschalten → Repos eintragen, eins pro Zeile: `Besitzer/Repo`, die GitHub-Adresse oder mit Branch `Besitzer/Repo@dev`. **Speichern.**
+2. Für private Repos auf GitHub einen **Fine-grained-Token** anlegen (*Settings → Developer settings → Fine-grained tokens*): nur die gewünschten Repos, Berechtigung **Contents: Read-only**. Im Konfigurator unter **Zugangsdaten** bei `GITHUB_TOKEN` einfügen → **Setzen**.
+3. **Repos jetzt laden**, dann **Wissen prüfen**.
+
+Der Bot lädt die Repos als Kopie neben die `config.yaml` (`wissen-cache/`, nur Textdateien, ohne versteckte Ordner, `.env`- und Schlüsseldateien) und prüft im eingestellten Abstand (Standard 60 min), ob es Neues gibt. Der Token bleibt beim Bot – Claude Code bekommt ihn nie. Warnt die Prüfung, dass der Token schreiben darf: Der Bot schreibt nie, ein reiner Lese-Token ist trotzdem sicherer.
+
+Technik: Pro Antwort erzeugt der Bot eine temporäre MCP-Konfiguration für den mitgelieferten Lese-Server `wissen_ordner.py` (Ordner und geladene Repos), startet `claude -p` mit genau diesen Werkzeugen und löscht die Datei danach. An Claude Code werden keine Schlüssel oder Tokens aus der Umgebung weitergegeben. Antworten mit Nachschlagen dauern länger (10–30 s) und verbrauchen mehr Abo-Kontingent.
 
 Der Konfigurator sucht nichts automatisch auf deinem Rechner – alle Angaben trägst du selbst ein. (Unter *Wissen → Erweitert* gibt es zusätzlich eine Anbindung an einen eigenen MediaVault-Server; die ist nur für dessen Betreiber gedacht.)
 
@@ -186,6 +193,7 @@ Werte aus `!set` landen in `config.overrides.json` und überleben einen Neustart
 - `voice_notifier.py` – Voice-Join-Melder, eigenständig und ohne KI
 - `knowledge.py` – Wissensquellen (lokale Ordner, optional eigener MediaVault; nur lesend) für die Abo-Variante
 - `wissen_ordner.py` – Lese-Server für lokale Wissensordner (MCP, ohne Zusatzpakete)
+- `wissen_github.py` – GitHub-Repos laden und aktuell halten (Zip über die API, kein git nötig)
 - `updater.py` + `version.py` – Updates aus dem Release-Repo (Prüfsumme, Sicherung, Zurücksetzen)
 - `quorumbot.py` – Einstieg der Windows-exe; `tools/build_exe.py` baut sie (PyInstaller, nur unter Windows)
 - `settings_schema.py` – alle Einstellungen mit Typ, Grenzen und Hilfetext (gemeinsam für Konfigurator, `!set` und Slash)

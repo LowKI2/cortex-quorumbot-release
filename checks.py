@@ -12,6 +12,7 @@ import json
 import os
 import shutil
 import subprocess
+import time
 import sys
 import urllib.error
 import urllib.request
@@ -216,8 +217,8 @@ def discord_checks(cfg, token: str, get=http_get) -> list[Result]:
 
 # --- Wissen (MediaVault) ------------------------------------------------
 def knowledge_checks(cfg, env: dict, with_request: bool = True, post=None) -> list[Result]:
-    mv, fo = cfg.get("knowledge.mediavault.enabled"), cfg.get("knowledge.folders.enabled")
-    if not (mv or fo):
+    mv, fo, gh = cfg.get("knowledge.mediavault.enabled"), cfg.get("knowledge.folders.enabled"), cfg.get("knowledge.github.enabled")
+    if not (mv or fo or gh):
         return []
     if cfg.get("llm.provider") != "claude_code":
         return [Result("Wissen", "warn", "nur mit Anbieter „Claude-Abo“ möglich – bleibt aus",
@@ -227,8 +228,35 @@ def knowledge_checks(cfg, env: dict, with_request: bool = True, post=None) -> li
         out += _mediavault_checks(cfg, env, post or http_post_json)
     if fo:
         out += folder_checks(cfg)
+    if gh:
+        out += github_checks(cfg, env)
     if with_request and not any(r.status == "fail" for r in out):
         out.append(knowledge_probe(cfg))
+    return out
+
+
+def github_checks(cfg, env: dict, get=None) -> list[Result]:
+    """Erreichbarkeit/Zugriff je Repo und Stand des Zwischenspeichers (lädt nichts herunter)."""
+    import wissen_github as gh
+    specs = gh.repos(cfg)
+    if not specs:
+        return [Result("GitHub-Wissen", "fail", "kein Repo eingetragen", "Im Konfigurator unter Wissen Repos eintragen (Besitzer/Repo).")]
+    tok = gh.token(cfg, env)
+    out = []
+    for spec in specs:
+        try:
+            meta = gh.info(spec, tok, get or gh.http)
+        except gh.RepoError as e:
+            out.append(Result("GitHub-Wissen", "fail", str(e), "Repo-Angabe und GITHUB_TOKEN prüfen."))
+            continue
+        m = gh.marker(gh.repo_dir(cfg, spec))
+        stand = (f"{m.get('files', 0)} Dateien geladen, Stand {time.strftime('%d.%m. %H:%M', time.localtime(m['ts']))}"
+                 if m.get("ts") else "noch nicht geladen – „Repos jetzt laden“ oder Bot starten")
+        out.append(Result("GitHub-Wissen", "ok" if m.get("ts") else "warn",
+                          f"{meta['full_name']}@{meta['ref']} ({'privat' if meta['private'] else 'öffentlich'}) – {stand}"))
+        if meta["can_push"]:
+            out.append(Result("GitHub-Token", "warn", f"darf in {meta['full_name']} auch schreiben",
+                              "Der Bot schreibt nie – sicherer ist trotzdem ein Fine-grained-Token mit Contents: Read-only."))
     return out
 
 
