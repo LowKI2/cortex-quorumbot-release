@@ -4,6 +4,9 @@ from __future__ import annotations
 import re
 
 from config import DEFAULT_SETTABLE
+from knowledge import DEFAULT_TOOLS as KNOWLEDGE_DEFAULT
+from knowledge import DEFAULT_EXT as KNOWLEDGE_EXT
+from knowledge import READ_TOOLS as KNOWLEDGE_TOOLS
 from guardrails import HARD_MAX_MINUTES, HARD_MAX_ROUNDS, HARD_MIN_COOLDOWN
 
 PROVIDERS = ["anthropic", "claude_code", "openai"]
@@ -80,6 +83,23 @@ SECTIONS = [
          "max": 1000, "default": 60},
         {"key": "guardrails.max_tokens_per_day", "label": "Tokens pro Tag", "type": "int", "min": 1000,
          "max": 50_000_000, "default": 300_000},
+    ]),
+    ("Wissen", [
+        {"key": "knowledge.mediavault.enabled", "label": "MediaVault-Wissen nutzen", "type": "bool", "default": False,
+         "help": "Nur mit Anbieter „Claude-Abo“. Der Bot darf MediaVault lesen – nichts ändern. Alles, was er lesen kann, kann er im Kanal auch erzählen: Schlüssel nur für freigegebene Projekte anlegen."},
+        {"key": "knowledge.mediavault.url", "label": "MediaVault-Adresse", "type": "text", "default": "",
+         "show_if": {"knowledge.mediavault.enabled": [True]}, "help": "z. B. https://…ts.net:8445 – ohne /mcp."},
+        {"key": "knowledge.mediavault.tools", "label": "Erlaubte Lese-Werkzeuge", "type": "checklist",
+         "options": KNOWLEDGE_TOOLS, "default": KNOWLEDGE_DEFAULT, "show_if": {"knowledge.mediavault.enabled": [True]},
+         "help": "Schreibende Werkzeuge gibt es hier nicht – sie sind für den Bot immer gesperrt."},
+        {"key": "knowledge.folders.enabled", "label": "Lokale Ordner nutzen", "type": "bool", "default": False,
+         "help": "Nur mit Anbieter „Claude-Abo“. Der Bot darf in den gewählten Ordnern Textdateien auflisten, durchsuchen und lesen – nichts ändern. Versteckte Ordner, .env- und Schlüsseldateien sind immer gesperrt."},
+        {"key": "knowledge.folders.paths", "label": "Wissensordner", "type": "list", "show_if": {"knowledge.folders.enabled": [True]},
+         "help": "Ein Ordner pro Zeile, z. B. C:\\Users\\Name\\Documents\\Wissen – oder unten „Ordner wählen …“. Nur Ordner, deren Inhalt in die Runde darf."},
+        {"key": "knowledge.folders.extensions", "label": "Dateitypen", "type": "list", "default": KNOWLEDGE_EXT,
+         "show_if": {"knowledge.folders.enabled": [True]}, "advanced": True, "help": "Nur Textformate, eins pro Zeile."},
+        {"key": "knowledge.folders.max_kb", "label": "Max. Dateigröße (KB)", "type": "int", "min": 10, "max": 5000, "default": 200,
+         "show_if": {"knowledge.folders.enabled": [True]}, "advanced": True},
     ]),
     ("Voice-Melder", [
         {"key": "voice_notifier.enabled", "label": "Voice-Melder aktiv", "type": "bool", "default": False,
@@ -190,6 +210,18 @@ def check_consistency(get) -> tuple[list[str], list[str]]:
     owner = get("bot.owner_id")
     if owner and owner in (get("bot.partner_bot_ids") or []):
         errors.append("Deine User-ID steht auch als Partner-Bot drin.")
+    if get("knowledge.mediavault.enabled"):
+        if get("llm.provider") != "claude_code":
+            warnings.append("MediaVault-Wissen funktioniert nur mit Anbieter „Claude-Abo“ – bei anderen Anbietern bleibt es aus.")
+        if not (get("knowledge.mediavault.url") or "").strip():
+            warnings.append("MediaVault-Wissen ist an, aber die Adresse fehlt.")
+        if not get("knowledge.mediavault.tools"):
+            warnings.append("MediaVault-Wissen ist an, aber kein Werkzeug erlaubt.")
+    if get("knowledge.folders.enabled"):
+        if get("llm.provider") != "claude_code":
+            warnings.append("Wissensordner funktionieren nur mit Anbieter „Claude-Abo“ – bei anderen Anbietern bleiben sie aus.")
+        if not get("knowledge.folders.paths"):
+            warnings.append("Wissensordner sind an, aber es ist kein Ordner eingetragen.")
     if get("voice_notifier.enabled"):
         if not get("voice_notifier.watch"):
             warnings.append("Voice-Melder ist an, aber es ist kein Sprachraum → Textkanal eingetragen.")

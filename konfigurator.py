@@ -114,7 +114,11 @@ class Store:
             return {}
 
     def secret_names(self, data: dict) -> list[str]:
-        return [flat_get(data, k) or d for k, d in SECRET_KEYS_DEFAULT]
+        import knowledge
+        names = [flat_get(data, k) or d for k, d in SECRET_KEYS_DEFAULT]
+        if flat_get(data, "knowledge.mediavault.enabled") and knowledge.KEY_ENV not in names:
+            names.append(knowledge.KEY_ENV)
+        return names
 
     def state(self) -> dict:
         data = load_config(self.cfg_path)
@@ -143,8 +147,17 @@ class Store:
             budget = None
         ov = {k: (str(v) if FIELDS.get(k, {}).get("type") == "id" else v) for k, v in self.overrides().items()}
         errors, warnings = check_consistency(self._getter(data))
+        import knowledge
+        bridge = knowledge.bridge_url()
+        if bridge and not values.get("knowledge.mediavault.url"):
+            values["knowledge.mediavault.url"] = bridge      # Vorschlag aus der MediaVault-Brücke (nur Adresse)
+        sections = []
+        for t, fs in SECTIONS:
+            fs = [dict(f, suggest=[bridge], help=f["help"] + " Gefunden in deiner MediaVault-Chat-Brücke: " + bridge)
+                  if f["key"] == "knowledge.mediavault.url" and bridge else f for f in fs]
+            sections.append({"title": t, "fields": fs})
         return {
-            "sections": [{"title": t, "fields": fs} for t, fs in SECTIONS],
+            "sections": sections,
             "values": values, "overrides": ov, "secrets": secrets,
             "status": status, "budget": budget, "exists": self.cfg_path.exists(),
             "path": str(self.cfg_path), "errors": errors, "warnings": warnings,
@@ -258,6 +271,47 @@ class Store:
                 "application_id": str(app.get("id")) if st == 200 and isinstance(app, dict) else None,
                 "intent": bool(flags & (FLAG_MESSAGE_CONTENT | FLAG_MESSAGE_CONTENT_LIMITED))}
 
+    def knowledge_check(self) -> dict:
+        """Nur die MediaVault-Prüfung (ohne Modell-Anfrage) – für den Knopf „Verbindung prüfen“."""
+        if not self.cfg_path.exists():
+            return {"ok": False, "errors": ["Erst speichern."]}
+        from checks import knowledge_checks
+        cfg, env = self._cfg_env()
+        res = knowledge_checks(cfg, env, with_request=False)
+        if not res:
+            return {"ok": False, "errors": ["Wissen ist aus."]}
+        return {"ok": True, "results": [r.to_dict() for r in res],
+                "summary": "Bereit" if all(r.status != "fail" for r in res) else "Nicht bereit",
+                "ready": all(r.status != "fail" for r in res)}
+
+    def pick_folder(self) -> dict:
+        """Windows-/System-Dialog „Ordner wählen“ – der Konfigurator läuft lokal, daher geht das."""
+        import queue
+        q = queue.Queue()
+
+        def run():
+            try:
+                import tkinter as tk
+                from tkinter import filedialog
+                root = tk.Tk()
+                root.withdraw()
+                root.attributes("-topmost", True)
+                path = filedialog.askdirectory(title="Wissensordner wählen", mustexist=True)
+                root.destroy()
+                q.put(path or "")
+            except Exception as e:  # noqa: BLE001
+                q.put(e)
+        threading.Thread(target=run, daemon=True).start()
+        try:
+            res = q.get(timeout=600)
+        except Exception:  # noqa: BLE001
+            return {"ok": False, "errors": ["Kein Ordner gewählt."]}
+        if isinstance(res, Exception):
+            return {"ok": False, "errors": ["Ordner-Dialog nicht verfügbar – Pfad bitte von Hand eintragen."]}
+        if not res:
+            return {"ok": False, "errors": ["Abgebrochen."]}
+        return {"ok": True, "path": str(Path(res))}
+
     def start_bot(self) -> dict:
         """Startet den Bot in einem eigenen Fenster (nur wenn er nicht schon läuft)."""
         try:
@@ -334,6 +388,8 @@ def make_handler(store: Store):
                 "/api/test": store.test_llm,
                 "/api/check": lambda: store.check(bool(body.get("with_request", True))),
                 "/api/bot/start": store.start_bot,
+                "/api/knowledge/check": store.knowledge_check,
+                "/api/pick_folder": store.pick_folder,
             }
             fn = routes.get(self.path)
             if not fn:

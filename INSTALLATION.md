@@ -86,6 +86,17 @@ Bei jedem Fehler steht direkt darunter, was zu tun ist. Wenn unten **„Startkla
 
 Alle fünf Punkte erfüllt: Die Runde ist einsatzbereit.
 
+## Optional: Wissen (nur Abo-Variante)
+
+Der Bot kann in **lokalen Ordnern** und/oder deinem **MediaVault** nachschlagen – nur lesend.
+
+1. Konfigurator → Bereich **Wissen**.
+2. Ordner: „Lokale Ordner“ einschalten → **Ordner wählen …** → Ordner aussuchen → **Speichern**. Am besten einen eigenen Wissensordner nehmen, nicht ganz „Dokumente“.
+3. MediaVault: in MediaVault einen Schlüssel **nur mit Leserechten** anlegen, im Konfigurator MediaVault einschalten, Adresse prüfen, **Speichern**, Schlüssel bei `MEDIAVAULT_KEY` einfügen → **Setzen**.
+4. **Wissen prüfen** – alles grün? Dann Bot neu starten.
+
+> Alles, was der Bot lesen kann, kann er im Kanal auch erzählen. Versteckte Ordner, `.env`, Schlüssel- und Passwortdateien liest er nie.
+
 ## Optional: Voice-Join-Melder
 
 Der Bot meldet im Textkanal, wenn jemand einen Sprachraum betritt – ohne KI, kostet nichts.

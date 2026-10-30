@@ -38,6 +38,8 @@ def build_system(cfg, d: Decision) -> str:
             rules.append(f"Eröffne den Dialog mit {partner} zum Thema: {d.topic or 'das, worüber gerade gesprochen wurde'}.")
         if d.final:
             rules.append(f"Das ist die letzte Runde: Zieh ein Fazit für {owner} und {partner_owner} (Einigkeit, offene Punkte, Empfehlung).")
+    import knowledge
+    rules += knowledge.prompt_rules(cfg)
     parts = [persona, "## Regeln", *[f"- {r}" for r in rules]] if persona else ["## Regeln", *[f"- {r}" for r in rules]]
     return "\n".join(parts)
 

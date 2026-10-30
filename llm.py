@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import re
 import shutil
 import tempfile
 from pathlib import Path
@@ -72,7 +73,7 @@ class LLM:
         return text, tin, tout
 
     # --- Abo-Variante ----------------------------------------------------
-    def claude_code_command(self, system_file: str) -> list[str]:
+    def claude_code_command(self, system_file: str, knowledge_config: str | None = None) -> list[str]:
         """Baut den Aufruf. Ohne Freigaben: keine Werkzeuge, keine MCP-Server."""
         exe = self.cfg.get("claude_code.path", "claude")
         resolved = shutil.which(exe) or exe
@@ -88,10 +89,14 @@ class LLM:
         model = self.cfg.get("llm.model")
         if model:
             cmd += ["--model", str(model)]
-        mcp_config = self.cfg.get("claude_code.mcp_config")
-        allowed = self.cfg.get("claude_code.allowed_tools") or []
-        if mcp_config:
-            cmd += ["--mcp-config", str(mcp_config)]
+        import knowledge
+        mcp_configs = [str(c) for c in (self.cfg.get("claude_code.mcp_config"), knowledge_config) if c]
+        allowed = list(self.cfg.get("claude_code.allowed_tools") or [])
+        if knowledge_config:
+            allowed += knowledge.allowed_tool_names(self.cfg)
+            cmd += ["--disallowedTools", ",".join(knowledge.DENIED)]
+        if mcp_configs:
+            cmd += ["--mcp-config", *mcp_configs]
         if allowed:
             cmd += ["--allowedTools", ",".join(allowed)]
         return cmd
@@ -101,12 +106,14 @@ class LLM:
         workdir.mkdir(parents=True, exist_ok=True)
         timeout = float(self.cfg.get("claude_code.timeout_seconds", 180))
 
+        import knowledge
         with tempfile.NamedTemporaryFile("w", suffix=".md", delete=False, encoding="utf-8") as f:
             f.write(system)
             system_file = f.name
+        knowledge_config = knowledge.write_mcp_config(self.cfg, dict(os.environ))
         try:
             proc = await asyncio.create_subprocess_exec(
-                *self.claude_code_command(system_file),
+                *self.claude_code_command(system_file, knowledge_config),
                 cwd=str(workdir),
                 stdin=asyncio.subprocess.PIPE,
                 stdout=asyncio.subprocess.PIPE,
@@ -122,20 +129,25 @@ class LLM:
                 await proc.wait()
                 raise RuntimeError(f"claude -p hat nach {timeout:.0f} s nicht geantwortet")
         finally:
-            try:
-                os.unlink(system_file)
-            except OSError:
-                pass
+            for tmp in (system_file, knowledge_config):
+                if tmp:
+                    try:
+                        os.unlink(tmp)
+                    except OSError:
+                        pass
 
         return parse_claude_json(out.decode("utf-8", "replace"), err.decode("utf-8", "replace"), proc.returncode)
 
 
 def abo_env() -> dict:
-    """Umgebung für `claude -p` ohne API-Keys – sonst rechnet Claude Code über den Key ab statt übers Abo."""
-    env = dict(os.environ)
-    for k in ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN"):
-        env.pop(k, None)
-    return env
+    """Umgebung für `claude -p` ohne Schlüssel und Tokens.
+
+    API-Keys würden das Abo aushebeln (Claude Code rechnet dann über den Key ab), und Discord-Token,
+    MediaVault-Schlüssel usw. braucht Claude nicht – MediaVault bekommt er über die MCP-Konfiguration.
+    Die Anmeldung von Claude Code selbst (CLAUDE_*) bleibt erhalten.
+    """
+    secret = re.compile(r"(KEY|TOKEN|SECRET|PASSWORD|PASSWD)", re.I)
+    return {k: v for k, v in os.environ.items() if k.upper().startswith("CLAUDE") or not secret.search(k)}
 
 
 def render_transcript(messages: list[dict]) -> str:

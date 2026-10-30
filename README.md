@@ -4,7 +4,7 @@
 
 **Text- und Sprachbot für Discord** – eine Runde aus Menschen und KI-Bots, mit festen Leitplanken. Ein Werkzeug von BZi Studio.
 
-> **Status: Beta (v0.3.1).** Leitplanken und Abo-Anbindung sind automatisch getestet, der Betrieb mit zwei Bots in echtem Discord noch nicht. Bitte erst in einem eigenen Test-Server ausprobieren.
+> **Status: Beta (v0.4.0).** Leitplanken und Abo-Anbindung sind automatisch getestet, der Betrieb mit zwei Bots in echtem Discord noch nicht. Bitte erst in einem eigenen Test-Server ausprobieren.
 
 Gedacht für eine Runde aus zwei Menschen und zwei KIs. Jede Person betreibt **einen eigenen Bot** auf dem eigenen Rechner, mit eigenem API-Key **oder eigenem Claude-Abo**. Gleicher Code, eigene `config.yaml`.
 
@@ -78,6 +78,23 @@ Die Befehlsgruppe heißt wie dein Bot, also z. B. `/nova …` und `/kai …`. So
 
 Alles außer `stopp` nur für den Besitzer. Es gelten dieselben Prüfungen und Grenzen wie im Konfigurator. Was per Chat änderbar ist, legst du im Konfigurator unter „Chat-Rechte“ fest. Wurde der Bot ohne `applications.commands` eingeladen, einfach mit dem neuen Einladungslink nochmal einladen.
 
+## Wissen: MediaVault und lokale Ordner (nur Abo-Variante)
+
+Der Bot kann bei Fragen nachschlagen – **nur lesend**, aus zwei Quellen, die du einzeln einschaltest. Alles im Konfigurator unter **Wissen**, ohne Dateien von Hand zu bearbeiten. Wichtig: Alles, was der Bot lesen kann, kann er im Kanal auch erzählen.
+
+**Lokale Ordner**
+1. Konfigurator → **Wissen** → „Lokale Ordner“ einschalten → **Ordner wählen …** (öffnet den Windows-Dialog; mehrere Ordner möglich). **Speichern.**
+2. **Wissen prüfen** zeigt, ob die Ordner da sind und wie viele Dateien lesbar sind.
+3. Gelesen werden nur Textdateien (`.md`, `.txt`, `.csv`, `.json`, `.yaml`, `.html` …, unter „Erweitert“ änderbar) bis 200 KB. Nie gelesen: versteckte Ordner (`.git`, `.obsidian` …), `.env`, Schlüssel-, Passwort- und Token-Dateien, alles außerhalb der gewählten Ordner. Lieber einen eigenen Wissensordner wählen statt ganz `C:\` oder „Dokumente“.
+
+**MediaVault**
+1. In MediaVault unter *Mein Konto → KI-Zugang* einen **eigenen Schlüssel nur mit Leserechten** anlegen – und nur für die Projekte, die in die Runde dürfen.
+2. Konfigurator → **Wissen** → MediaVault einschalten. Die Adresse wird aus einer vorhandenen MediaVault-Chat-Brücke vorgeschlagen (nur die Adresse, nie deren Schlüssel). **Speichern.**
+3. Schlüssel ins Feld `MEDIAVAULT_KEY` einfügen → **Setzen** → **Wissen prüfen**.
+4. Optional die erlaubten Lese-Werkzeuge anpassen. Schreibende Werkzeuge stehen gar nicht zur Auswahl und sind immer gesperrt, ebenso Terminal, Dateizugriff von Claude Code selbst und Internet.
+
+Technik: Pro Antwort erzeugt der Bot eine temporäre MCP-Konfiguration (MediaVault per HTTP mit deinem Schlüssel, Ordner über den mitgelieferten Lese-Server `wissen_ordner.py`), startet `claude -p` mit genau diesen Werkzeugen und löscht die Datei danach. An Claude Code werden keine Schlüssel oder Tokens aus der Umgebung weitergegeben. Antworten mit Nachschlagen dauern länger (10–30 s) und verbrauchen mehr Abo-Kontingent. „Vollständiger Test“ macht eine echte Wissens-Abfrage.
+
 ## Voice-Join-Melder
 
 Eigenständiges Modul (`voice_notifier.py`), läuft **ohne KI**: Betritt jemand einen überwachten Sprachraum (oder wechselt hinein), postet der Bot in den zugeordneten Textkanal:
@@ -149,6 +166,8 @@ Werte aus `!set` landen in `config.overrides.json` und überleben einen Neustart
 - `slash.py` – Slash-Befehle und Panel
 - `checks.py` + `pruefen.py`/`pruefen.bat` – Selbsttest (auch im Konfigurator)
 - `voice_notifier.py` – Voice-Join-Melder, eigenständig und ohne KI
+- `knowledge.py` – Wissensquellen (MediaVault, lokale Ordner; nur lesend) für die Abo-Variante
+- `wissen_ordner.py` – Lese-Server für lokale Wissensordner (MCP, ohne Zusatzpakete)
 - `settings_schema.py` – alle Einstellungen mit Typ, Grenzen und Hilfetext (gemeinsam für Konfigurator, `!set` und Slash)
 - `tests/` – `python -m pytest tests`
 

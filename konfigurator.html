@@ -245,6 +245,11 @@ details[open] > summary::before{content:"–"}
 }
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 
+.kn-extra{display:grid;gap:var(--space-4);margin-top:var(--space-5);padding-top:var(--space-4);border-top:1px solid var(--line)}
+.kn-actions{display:flex;gap:var(--space-3);align-items:center;flex-wrap:wrap}
+.kn-out:empty{display:none}
+.kn-actions .help,.voice-actions .help{color:var(--text-2);font-size:var(--text-xs)}
+
 /* ---------- Assistent ---------- */
 .wiz-back{position:fixed;inset:0;z-index:20;background:color-mix(in srgb,var(--bg-0) 70%,transparent);backdrop-filter:blur(6px);display:grid;place-items:center;padding:16px}
 .wiz-back.hidden{display:none}
@@ -306,6 +311,7 @@ ol.howto code,.wiz-b code{font-family:var(--font-mono);font-size:var(--text-xs);
   <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4l13 8-13 8z"/></symbol>
   <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 6 0l3-3a4 4 0 0 0-6-6l-1 1"/><path d="M14 10a4 4 0 0 0-6 0l-3 3a4 4 0 0 0 6 6l1-1"/></symbol>
   <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14-5l-2 2M4 4v4h4M4 13a8 8 0 0 0 14 5l2-2M20 20v-4h-4"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 19V5M9 7h6"/></symbol>
   <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 20a2 2 0 0 0 4 0"/></symbol>
   <symbol id="i-undo" viewBox="0 0 24 24"><path d="M4 9h11a5 5 0 0 1 0 10H8"/><path d="M8 5 4 9l4 4"/></symbol>
 </svg>
@@ -389,7 +395,7 @@ ol.howto code,.wiz-b code{font-family:var(--font-mono);font-size:var(--text-xs);
 </div>
 
 <script>
-const ICONS = {"Bot & Personen":"bot","Discord":"hash","Modell":"cpu","Persönlichkeit & Kontext":"user","Leitplanken":"shield","Chat-Rechte":"lock","Voice-Melder":"bell"};
+const ICONS = {"Bot & Personen":"bot","Discord":"hash","Modell":"cpu","Persönlichkeit & Kontext":"user","Leitplanken":"shield","Chat-Rechte":"lock","Voice-Melder":"bell","Wissen":"book"};
 let S = null, dirty = false;
 const $ = (s, el=document) => el.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -479,7 +485,18 @@ function renderSections(){
       </div>`;
     }).join("");
     const ic = ICONS[sec.title] || "shield";
-    card.innerHTML = `<div class="card-h">${icon(ic)}<h2>${esc(sec.title)}</h2>${nOv?`<span class="tag warn" style="margin-left:auto">${nOv} per Chat</span>`:""}</div><div class="grid">${block(basic)}</div>`
+    const kn = sec.title === "Wissen";
+    const extra = kn ? `<div class="kn-extra" data-show='${esc(JSON.stringify({"knowledge.mediavault.enabled":[true]}))}'>
+        <div class="f"><label><span class="mono">MEDIAVAULT_KEY</span> <span class="tag ${S.secrets.MEDIAVAULT_KEY?"ok":"bad"}">${S.secrets.MEDIAVAULT_KEY?"gesetzt":S.secrets.MEDIAVAULT_KEY===undefined?"erst speichern":"leer"}</span></label>
+          <div class="secret"><input type="password" autocomplete="off" spellcheck="false" placeholder="Schlüssel mit Leserechten (mv_…) einfügen" data-secret="MEDIAVAULT_KEY" ${S.secrets.MEDIAVAULT_KEY===undefined?"disabled":""}>
+          <button class="small" data-setsecret="MEDIAVAULT_KEY" ${S.secrets.MEDIAVAULT_KEY===undefined?"disabled":""}>Setzen</button></div>
+          <span class="help">MediaVault → Mein Konto → KI-Zugang. Wird nur in der .env auf diesem Rechner gespeichert.</span></div>
+        </div>
+        <div class="kn-extra" data-show='${esc(JSON.stringify({"knowledge.folders.enabled":[true]}))}'>
+          <div class="kn-actions"><button data-pickfolder="1">${icon("book")}Ordner wählen …</button><span class="help">öffnet den Ordner-Dialog von Windows und fügt den Ordner der Liste hinzu</span></div></div>
+        <div class="kn-extra"><div class="kn-actions"><button data-kncheck="1">${icon("check")}Wissen prüfen</button><span class="help">MediaVault: Adresse, Schlüssel, Werkzeuge · Ordner: vorhanden, Anzahl lesbarer Dateien – ohne Modell-Anfrage. „Vollständiger Test“ fragt zusätzlich echt ab.</span></div>
+        <div class="kn-out"></div></div>` : "";
+    card.innerHTML = `<div class="card-h">${icon(ic)}<h2>${esc(sec.title)}</h2>${nOv?`<span class="tag warn" style="margin-left:auto">${nOv} per Chat</span>`:""}</div><div class="grid">${block(basic)}</div>${extra}`
       + (adv.length?`<details><summary class="label">Erweitert</summary><div class="grid" style="margin-top:var(--space-4)">${block(adv)}</div></details>`:"");
     $("#main").appendChild(card);
     nav.insertAdjacentHTML("beforeend", `<a href="#sec-${i}">${icon(ic)}<span class="t">${esc(sec.title)}</span>${nOv?`<span class="cnt">${nOv}</span>`:""}</a>`);
@@ -556,7 +573,7 @@ document.addEventListener("click", async e => {
   if(t.dataset.clear){ await api("/api/override/clear",{key:t.dataset.clear}); await load(); msg("Chat-Wert entfernt – jetzt gilt der Wert aus der Datei.","ok"); }
   if(t.id==="clearall"){ e.preventDefault(); if(confirm("Alle per Chat gesetzten Werte entfernen?")){ await api("/api/override/clear",{}); await load(); msg("Alle Chat-Werte entfernt.","ok"); } }
   if(t.dataset.setsecret){
-    const inp = document.querySelector(`[data-secret="${t.dataset.setsecret}"]`);
+    const inp = t.closest(".secret").querySelector("input");
     if(!inp.value.trim()) return msg("Kein Wert eingegeben.","err");
     const r = await api("/api/secret",{name:t.dataset.setsecret,value:inp.value});
     inp.value=""; await load(); msg(r.ok?`${t.dataset.setsecret} gesetzt.`:r.errors.join(" "), r.ok?"ok":"err");
@@ -611,6 +628,25 @@ $("#invite").onclick = async () => {
 };
 
 $("#check").onclick = () => fullCheck();
+document.addEventListener("click", async e => {
+  const pf = e.target.closest("[data-pickfolder]"); if(!pf) return;
+  pf.disabled = true; msg("Ordner-Dialog ist offen (ggf. hinter dem Browser) …","info");
+  const r = await api("/api/pick_folder",{}); pf.disabled = false;
+  if(!r.ok) return msg(r.errors.join(" "), "warn");
+  const ta = document.querySelector('[data-key="knowledge.folders.paths"]');
+  const lines = ta.value.split("\n").map(x=>x.trim()).filter(Boolean);
+  if(!lines.includes(r.path)) lines.push(r.path);
+  ta.value = lines.join("\n"); dirty = true;
+  msg(`Ordner hinzugefügt: ${r.path} – jetzt speichern.`,"warn");
+});
+document.addEventListener("click", async e => {
+  const b = e.target.closest("[data-kncheck]"); if(!b) return;
+  if(dirty) return msg("Erst speichern, dann prüfen.","warn");
+  const out = b.closest(".kn-extra").querySelector(".kn-out");
+  b.disabled = true; out.innerHTML = `<p style="display:flex;gap:10px;align-items:center"><span class="spin"></span>Prüfe Wissensquellen …</p>`;
+  const r = await api("/api/knowledge/check",{}); b.disabled = false;
+  out.innerHTML = r.ok ? resultsHtml(r) : `<div class="verdict bad">${esc(r.errors.join(" "))}</div>`;
+});
 $("#wizbtn").onclick = () => wizOpen(0);
 $("#reload").onclick = () => { if(!dirty || confirm("Ungespeicherte Änderungen verwerfen?")) load(); };
 window.addEventListener("beforeunload", e => { if(dirty){ e.preventDefault(); e.returnValue=""; } });
