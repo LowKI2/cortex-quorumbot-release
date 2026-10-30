@@ -182,3 +182,12 @@ def test_standard_avatar_und_aufraeumen(tmp_path):
 def test_bot_beenden_ohne_lauf(tmp_path):
     from konfigurator import Store
     assert not Store(tmp_path / "config.yaml").stop_bot()["ok"]
+
+
+def test_exe_unterprozesse_bekommen_eigene_umgebung(monkeypatch):
+    import version
+    monkeypatch.setattr(version, "frozen", lambda: True)
+    env = version.child_env({"PATH": "x", "_PYI_APPLICATION_HOME_DIR": "C:/t/_MEI1", "_MEIPASS2": "y"})
+    assert env == {"PATH": "x", "PYINSTALLER_RESET_ENVIRONMENT": "1"}
+    monkeypatch.setattr(version, "frozen", lambda: False)
+    assert version.child_env({"PATH": "x"}) == {"PATH": "x"}

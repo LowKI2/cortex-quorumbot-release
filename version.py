@@ -4,7 +4,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-VERSION = "0.5.2"
+VERSION = "0.5.3"
 RELEASE_REPO = "LowKI2/cortex-quorumbot-release"
 ASSET_PYTHON = "CortexQuorumBot.zip"
 ASSET_EXE = "CortexQuorumBot-Windows.zip"
@@ -27,6 +27,19 @@ def variant() -> str:
 
 def asset_name() -> str:
     return ASSET_EXE if frozen() else ASSET_PYTHON
+
+
+def child_env(env: dict | None = None) -> dict:
+    """Umgebung für Unterprozesse. In der exe (PyInstaller onefile) muss ein neu gestartetes Programm
+    seinen eigenen Entpack-Ordner bekommen – sonst nutzt es den der startenden Instanz, der beim
+    Beenden gelöscht wird."""
+    import os
+    env = dict(os.environ if env is None else env)
+    if frozen():
+        env["PYINSTALLER_RESET_ENVIRONMENT"] = "1"
+        for k in [k for k in env if k.startswith("_PYI") or k == "_MEIPASS2"]:
+            env.pop(k)
+    return env
 
 
 def command(sub: str, *args: str) -> list[str]:

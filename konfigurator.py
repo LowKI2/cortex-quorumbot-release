@@ -459,8 +459,8 @@ class Store:
         if not self.cfg_path.exists():
             return {"ok": False, "errors": ["Erst speichern."]}
         import subprocess
-        from version import app_dir, command
-        kwargs = {"cwd": str(app_dir())}
+        from version import app_dir, child_env, command
+        kwargs = {"cwd": str(app_dir()), "env": child_env()}
         if sys.platform == "win32":
             kwargs["creationflags"] = subprocess.CREATE_NEW_CONSOLE
         else:

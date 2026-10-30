@@ -146,8 +146,10 @@ def abo_env() -> dict:
     MediaVault-Schlüssel usw. braucht Claude nicht – MediaVault bekommt er über die MCP-Konfiguration.
     Die Anmeldung von Claude Code selbst (CLAUDE_*) bleibt erhalten.
     """
+    from version import child_env
     secret = re.compile(r"(KEY|TOKEN|SECRET|PASSWORD|PASSWD)", re.I)
-    return {k: v for k, v in os.environ.items() if k.upper().startswith("CLAUDE") or not secret.search(k)}
+    env = {k: v for k, v in os.environ.items() if k.upper().startswith("CLAUDE") or not secret.search(k)}
+    return child_env(env)          # Claude startet ggf. den Wissensordner-Server aus der exe
 
 
 def render_transcript(messages: list[dict]) -> str:

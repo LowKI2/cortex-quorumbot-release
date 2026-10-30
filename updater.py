@@ -237,13 +237,13 @@ def cleanup_old(target: Path | None = None) -> int:
 def restart(kind: str, cfg_path: str | Path, extra: list[str] | None = None):
     """Programmteil (bot/konfigurator) frisch starten – unter Windows über das Startskript,
     damit neue Pakete installiert werden. Der Aufrufer beendet sich danach mit RESTART_CODE."""
-    from version import command
+    from version import child_env, command
     d = app_dir()
     if sys.platform == "win32":
         bat = d / ("start.bat" if kind == "bot" else "konfigurator.bat")
-        subprocess.Popen(["cmd", "/c", "start", "", str(bat), *(extra or [])], cwd=str(d))
+        subprocess.Popen(["cmd", "/c", "start", "", str(bat), *(extra or [])], cwd=str(d), env=child_env())
     else:
-        subprocess.Popen(command(kind, str(cfg_path), *(extra or [])), cwd=str(d), start_new_session=True)
+        subprocess.Popen(command(kind, str(cfg_path), *(extra or [])), cwd=str(d), start_new_session=True, env=child_env())
 
 
 def auto_update(mode: str, kind: str, cfg_path, log=print) -> bool:
