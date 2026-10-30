@@ -123,9 +123,9 @@ class Store:
             if values[k] is None and "default" in f:
                 values[k] = f["default"]
             if f["type"] in ("id",) and values[k] is not None:
-                values[k] = str(values[k])           # große IDs nie als JS-Zahl
+                values[k] = str(values[k]) if values[k] else None   # große IDs nie als JS-Zahl; 0 = Platzhalter
             if f["type"] == "idlist" and values[k]:
-                values[k] = [str(x) for x in values[k]]
+                values[k] = [str(x) for x in values[k] if x]
         env = read_env(self.env_path)
         secrets = {n: bool(env.get(n)) for n in self.secret_names(data)}
         status = None

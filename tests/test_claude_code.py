@@ -1,4 +1,5 @@
 import asyncio
+import os
 import sys
 from pathlib import Path
 
@@ -13,9 +14,13 @@ FAKE = Path(__file__).with_name("fake_claude.py")
 
 
 def make(tmp_path, **cc):
-    wrapper = tmp_path / "claude"
-    wrapper.write_text(f"#!/bin/sh\nexec {sys.executable} {FAKE} \"$@\"\n")
-    wrapper.chmod(0o755)
+    if os.name == "nt":   # Windows: .bat statt Shell-Skript
+        wrapper = tmp_path / "claude.bat"
+        wrapper.write_text(f'@"{sys.executable}" "{FAKE}" %*\r\n')
+    else:
+        wrapper = tmp_path / "claude"
+        wrapper.write_text(f"#!/bin/sh\nexec {sys.executable} {FAKE} \"$@\"\n")
+        wrapper.chmod(0o755)
     data = {"llm": {"provider": "claude_code", "model": "sonnet"},
             "claude_code": {"path": str(wrapper), "workdir": str(tmp_path / "sb"), **cc}}
     return LLM(Config(tmp_path / "x.yaml", data=data))

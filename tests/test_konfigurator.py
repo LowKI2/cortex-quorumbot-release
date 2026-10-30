@@ -115,3 +115,12 @@ def test_bot_start_verweigert_wenn_laeuft(tmp_path):
     s.save({"bot.owner_id": OWNER})
     (tmp_path / "config.status.json").write_text(json.dumps({"ts": time.time()}))
     assert not s.start_bot()["ok"]
+
+
+
+def test_platzhalter_ids_aus_alter_vorlage_gelten_als_leer(tmp_path):
+    (tmp_path / "config.yaml").write_text("bot:\n  owner_id: 000000000000000000\n  partner_bot_ids: [000000000000000000]\n", encoding="utf-8")
+    s = Store(tmp_path / "config.yaml")
+    st = s.state()
+    assert st["values"]["bot.owner_id"] is None and st["values"]["bot.partner_bot_ids"] == []
+    assert s.save({"bot.owner_id": OWNER, "bot.partner_bot_ids": st["values"]["bot.partner_bot_ids"]}, draft=True)["ok"]
