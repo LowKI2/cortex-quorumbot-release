@@ -96,3 +96,22 @@ def test_chat_set_nutzt_grenzen(tmp_path):
         raise AssertionError("Grenze nicht geprüft")
     except ValueError:
         pass
+
+
+def test_assistent_speichert_entwurf_ohne_owner(tmp_path):
+    s = store(tmp_path)
+    r = s.save({"llm.provider": "claude_code", "bot.name": "Lyra"}, draft=True)
+    assert r["ok"] and r["errors"]          # unvollständig, aber gespeichert
+    assert s.state()["values"]["bot.name"] == "Lyra"
+    assert not s.state()["wizard_done"]
+    s.wizard_done()
+    assert s.state()["wizard_done"]
+    assert not s.save({"bot.owner_id": "kaputt"}, draft=True)["ok"]   # Feldprüfung gilt trotzdem
+
+
+def test_bot_start_verweigert_wenn_laeuft(tmp_path):
+    import time
+    s = store(tmp_path)
+    s.save({"bot.owner_id": OWNER})
+    (tmp_path / "config.status.json").write_text(json.dumps({"ts": time.time()}))
+    assert not s.start_bot()["ok"]

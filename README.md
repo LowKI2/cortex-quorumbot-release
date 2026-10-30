@@ -2,7 +2,7 @@
 
 **Text- und Sprachbot für Discord** – eine Runde aus Menschen und KI-Bots, mit festen Leitplanken. Ein Werkzeug von BZi Studio.
 
-> **Status: Beta (v0.1.1).** Leitplanken und Abo-Anbindung sind automatisch getestet, der Betrieb mit zwei Bots in echtem Discord noch nicht. Bitte erst in einem eigenen Test-Server ausprobieren.
+> **Status: Beta (v0.2.0).** Leitplanken und Abo-Anbindung sind automatisch getestet, der Betrieb mit zwei Bots in echtem Discord noch nicht. Bitte erst in einem eigenen Test-Server ausprobieren.
 
 Gedacht für eine Runde aus zwei Menschen und zwei KIs. Jede Person betreibt **einen eigenen Bot** auf dem eigenen Rechner, mit eigenem API-Key **oder eigenem Claude-Abo**. Gleicher Code, eigene `config.yaml`.
 
@@ -12,6 +12,8 @@ Gedacht für eine Runde aus zwei Menschen und zwei KIs. Jede Person betreibt **e
 - Liest alles im Kanal mit, damit er weiß, worum es geht.
 - Führt auf Befehl einen **Dialog mit dem Partner-Bot**, innerhalb fester Leitplanken.
 - LLM: Anthropic-API, Claude-Abo über Claude Code oder jede OpenAI-kompatible API (z. B. Ollama lokal).
+
+**➜ Schritt-für-Schritt-Anleitung mit Tests: [INSTALLATION.md](INSTALLATION.md).** Kurz: Python installieren, `konfigurator.bat` starten, dem Assistenten folgen.
 
 > Cortex QuorumBot ist ein unabhängiges Projekt und steht in keiner Verbindung zu Anthropic oder Discord. „Claude“ und „Discord“ sind Marken ihrer jeweiligen Inhaber.
 
@@ -27,11 +29,11 @@ Gedacht für eine Runde aus zwei Menschen und zwei KIs. Jede Person betreibt **e
 
 ## Einrichtung (pro Person, ca. 15 Minuten)
 
-1. **Discord-Bot anlegen:** discord.com/developers/applications → New Application → Reiter *Bot* → Token kopieren. Dort **Message Content Intent** einschalten.
-2. **Einladen:** Application-ID im Konfigurator eintragen und auf „Einladungslink“ klicken. Oder von Hand: Reiter *OAuth2 → URL Generator* → Scopes `bot` **und** `applications.commands`, Rechte *Send Messages*, *Read Message History*, *View Channels* → Link öffnen, Server wählen.
-3. **IDs holen:** In Discord *Einstellungen → Erweitert → Entwicklermodus* an. Dann Rechtsklick → *ID kopieren* für: dich selbst, den Bot des anderen, den Runden-Kanal.
-4. **Am einfachsten:** `konfigurator.bat` doppelklicken. Im Browser alles ausfüllen, Token setzen, speichern, „Testanfrage“ drücken. Alternativ von Hand: `config.example.yaml` → `config.yaml` kopieren und ausfüllen. `.env.example` → `.env` kopieren und den Discord-Token eintragen, bei der API-Variante auch den API-Key.
-5. Windows: `start.bat` doppelklicken. Sonst: `pip install -r requirements.txt` und `python bot.py config.yaml`.
+1. Python 3.11+ installieren („Add to PATH“ anhaken).
+2. `konfigurator.bat` doppelklicken – der Assistent führt durch Discord-Bot, Modellzugang, Einladen, IDs und Test.
+3. Wenn der Test „Startklar“ meldet: `start.bat` doppelklicken (oder im Assistenten „Bot jetzt starten“).
+
+Ausführlich mit Funktionstest in Discord und Fehlerhilfe: **[INSTALLATION.md](INSTALLATION.md)**. Ohne Windows: `pip install -r requirements.txt`, dann `python konfigurator.py`, `python pruefen.py`, `python bot.py config.yaml`.
 
 ## Abo-Variante (ohne API-Key)
 
@@ -48,6 +50,8 @@ Hinweise:
 - Ein Dauer-Bot über das Abo ist eine Grauzone. Nur du solltest deinen Bot auslösen (das erzwingt `owner_id`), und prüft die aktuellen Nutzungsbedingungen.
 
 ## Konfigurator
+
+Beim ersten Start öffnet sich ein **Einrichtungsassistent** (Discord-Bot anlegen, Modellzugang, Einladen und IDs, Namen, Test). Später über den Knopf „Assistent“ erneut aufrufbar. „Vollständiger Test“ prüft Discord-Token, Message Content Intent, Server, Kanal, IDs und Modell und sagt bei jedem Fehler, was zu tun ist.
 
 `konfigurator.bat` (oder `python konfigurator.py config.yaml`) öffnet eine Oberfläche unter http://127.0.0.1:8765, nur auf diesem Rechner erreichbar.
 
@@ -123,6 +127,7 @@ Werte aus `!set` landen in `config.overrides.json` und überleben einen Neustart
 - `config.py` – YAML, Live-Neuladen, `!set`
 - `konfigurator.py` + `konfigurator.html` – Weboberfläche
 - `slash.py` – Slash-Befehle und Panel
+- `checks.py` + `pruefen.py`/`pruefen.bat` – Selbsttest (auch im Konfigurator)
 - `settings_schema.py` – alle Einstellungen mit Typ, Grenzen und Hilfetext (gemeinsam für Konfigurator, `!set` und Slash)
 - `tests/` – `python -m pytest tests`
 

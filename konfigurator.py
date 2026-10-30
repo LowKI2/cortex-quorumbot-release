@@ -146,6 +146,7 @@ class Store:
             "values": values, "overrides": ov, "secrets": secrets,
             "status": status, "budget": budget, "exists": self.cfg_path.exists(),
             "path": str(self.cfg_path), "errors": errors, "warnings": warnings,
+            "wizard_done": bool(flat_get(data, "meta.wizard_done")),
         }
 
     def _getter(self, data: dict):
@@ -157,7 +158,8 @@ class Store:
             return FIELDS.get(key, {}).get("default") if v is None else v
         return get
 
-    def save(self, incoming: dict) -> dict:
+    def save(self, incoming: dict, draft: bool = False) -> dict:
+        """draft=True (Assistent): Felder prüfen, aber unvollständige Konfiguration erlauben."""
         data = load_config(self.cfg_path)
         field_errors = {}
         for key, raw in incoming.items():
@@ -170,10 +172,16 @@ class Store:
         if field_errors:
             return {"ok": False, "field_errors": field_errors}
         errors, warnings = check_consistency(self._getter(data))
-        if errors:
+        if errors and not draft:
             return {"ok": False, "errors": errors}
         save_config(self.cfg_path, data)
-        return {"ok": True, "warnings": warnings}
+        return {"ok": True, "warnings": warnings, "errors": errors if draft else []}
+
+    def wizard_done(self) -> dict:
+        data = load_config(self.cfg_path)
+        flat_set(data, "meta.wizard_done", True)
+        save_config(self.cfg_path, data)
+        return {"ok": True}
 
     def set_secret(self, name: str, value: str) -> dict:
         data = load_config(self.cfg_path)
@@ -201,31 +209,71 @@ class Store:
                f"&scope=bot%20applications.commands&permissions={INVITE_PERMISSIONS}")
         return {"ok": True, "url": url}
 
+    def _cfg_env(self):
+        from dotenv import load_dotenv
+
+        from checks import load_env
+        load_dotenv(self.env_path, override=True)   # für die echte Testanfrage
+        return Config(self.cfg_path), load_env(self.env_path)
+
     def test_llm(self) -> dict:
         """Eine echte Testanfrage mit der gespeicherten Konfiguration."""
         if not self.cfg_path.exists():
             return {"ok": False, "errors": ["Erst speichern."]}
-        import os
+        from checks import model_request
+        cfg, _ = self._cfg_env()
+        r = model_request(cfg)
+        if r.status != "ok":
+            return {"ok": False, "errors": [r.detail + (" – " + r.fix if r.fix else "")]}
+        return {"ok": True, "text": r.detail.split("„", 1)[-1].rstrip("“"), "detail": r.detail}
 
-        from dotenv import load_dotenv
+    def check(self, with_request: bool) -> dict:
+        """Alle Prüfungen (wie pruefen.bat)."""
+        if not self.cfg_path.exists():
+            return {"ok": False, "errors": ["Erst speichern."]}
+        from checks import run_all, summary
+        cfg, env = self._cfg_env()
+        results = run_all(cfg, env, with_request=with_request)
+        return {"ok": True, "results": [r.to_dict() for r in results], "summary": summary(results),
+                "ready": not any(r.status == "fail" for r in results)}
 
-        from guardrails import Decision
-        from llm import LLM
-        from prompting import build_system
-        load_dotenv(self.env_path, override=True)
-        cfg = Config(self.cfg_path)
-        if cfg.get("llm.provider") == "claude_code":
-            key_var = cfg.get("llm.api_key_env", "ANTHROPIC_API_KEY")
-            if os.environ.get(key_var):
-                os.environ.pop(key_var, None)   # damit wirklich das Abo genutzt wird
-        system = build_system(cfg, Decision(True, "test", "owner", 1, 1, True))
-        msgs = [{"role": "user", "content": f"{cfg.get('bot.owner_name') or 'Besitzer'}: Kurzer Funktionstest – stell dich in einem Satz vor."}]
-        t0 = time.time()
+    def discord_identity(self) -> dict:
+        """Nach dem Setzen des Tokens: Bot-Name, Application-ID, Intent – zum Vorausfüllen im Assistenten."""
+        from checks import DISCORD_API, FLAG_MESSAGE_CONTENT, FLAG_MESSAGE_CONTENT_LIMITED, http_get, load_env
+        data = load_config(self.cfg_path)
+        token = load_env(self.env_path).get(flat_get(data, "discord.token_env") or "DISCORD_TOKEN", "")
+        if not token:
+            return {"ok": False, "errors": ["Discord-Token ist noch nicht gesetzt."]}
+        auth = {"Authorization": f"Bot {token}"}
+        st, me = http_get(f"{DISCORD_API}/users/@me", auth)
+        if st == 401:
+            return {"ok": False, "errors": ["Token ungültig – im Developer Portal neu erzeugen (Reset Token)."]}
+        if st != 200 or not isinstance(me, dict):
+            return {"ok": False, "errors": [f"Discord nicht erreichbar ({st})."]}
+        st, app = http_get(f"{DISCORD_API}/applications/@me", auth)
+        flags = int(app.get("flags") or 0) if st == 200 and isinstance(app, dict) else 0
+        return {"ok": True, "bot_name": me.get("username"), "bot_id": str(me.get("id")),
+                "application_id": str(app.get("id")) if st == 200 and isinstance(app, dict) else None,
+                "intent": bool(flags & (FLAG_MESSAGE_CONTENT | FLAG_MESSAGE_CONTENT_LIMITED))}
+
+    def start_bot(self) -> dict:
+        """Startet den Bot in einem eigenen Fenster (nur wenn er nicht schon läuft)."""
         try:
-            text, tin, tout = asyncio.run(LLM(cfg).complete(system, msgs))
-        except Exception as e:  # noqa: BLE001
-            return {"ok": False, "errors": [f"{type(e).__name__}: {e}"[:400]]}
-        return {"ok": True, "text": text, "tokens": tin + tout, "seconds": round(time.time() - t0, 1)}
+            st = json.loads(self.status_path.read_text(encoding="utf-8"))
+            if time.time() - float(st.get("ts", 0)) < 60:
+                return {"ok": False, "errors": ["Der Bot läuft bereits."]}
+        except (OSError, ValueError):
+            pass
+        if not self.cfg_path.exists():
+            return {"ok": False, "errors": ["Erst speichern."]}
+        import subprocess
+        kwargs = {"cwd": str(HERE)}
+        if sys.platform == "win32":
+            kwargs["creationflags"] = subprocess.CREATE_NEW_CONSOLE
+        else:
+            kwargs["start_new_session"] = True
+        subprocess.Popen([sys.executable, str(HERE / "bot.py"), str(self.cfg_path)], **kwargs)
+        return {"ok": True}
 
 
 # --- HTTP ---------------------------------------------------------------
@@ -262,6 +310,8 @@ def make_handler(store: Store):
                 return self._json(store.state())
             if self.path == "/api/invite":
                 return self._json(store.invite())
+            if self.path == "/api/discord/identity":
+                return self._json(store.discord_identity())
             self._json({"error": "nicht gefunden"}, 404)
 
         def do_POST(self):
@@ -275,10 +325,13 @@ def make_handler(store: Store):
             except ValueError:
                 return self._json({"error": "ungültiges JSON"}, 400)
             routes = {
-                "/api/save": lambda: store.save(body.get("values", {})),
+                "/api/save": lambda: store.save(body.get("values", {}), draft=bool(body.get("draft"))),
+                "/api/wizard/done": store.wizard_done,
                 "/api/secret": lambda: store.set_secret(str(body.get("name", "")), str(body.get("value", ""))),
                 "/api/override/clear": lambda: store.clear_override(body.get("key")),
                 "/api/test": store.test_llm,
+                "/api/check": lambda: store.check(bool(body.get("with_request", True))),
+                "/api/bot/start": store.start_bot,
             }
             fn = routes.get(self.path)
             if not fn:

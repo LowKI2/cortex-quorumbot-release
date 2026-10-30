@@ -48,3 +48,12 @@ def test_transcript_markiert_eigene_beitraege():
     t = render_transcript([{"role": "user", "content": "Max: frage"},
                            {"role": "assistant", "content": "antwort"}])
     assert "Max: frage" in t and "[Du]: antwort" in t
+
+
+def test_abo_gibt_api_key_nicht_weiter(tmp_path, monkeypatch):
+    from llm import abo_env
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-test")
+    assert "ANTHROPIC_API_KEY" not in abo_env()
+    llm = make(tmp_path)
+    text, _, _ = asyncio.run(llm.complete("S", [{"role": "user", "content": "hi"}]))
+    assert text == "Hallo aus dem Abo"

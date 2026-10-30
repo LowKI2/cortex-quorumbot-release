@@ -5,10 +5,10 @@
 bot:
   name: Nova                     # so heißt dein Bot im Gespräch
   owner_id: 000000000000000000   # DEINE Discord-User-ID – nur du kannst ihn ansprechen
-  owner_name: Dein Name
+  owner_name: ""                 # dein Name, so spricht dich der Bot an
   partner_bot_ids: [000000000000000000]  # User-ID des anderen Bots
   partner_name: Kai
-  partner_owner_name: Partner
+  partner_owner_name: ""         # Name der anderen Person
 
 discord:
   application_id: null           # Developer Portal → Application ID, nur für den Einladungslink

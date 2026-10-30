@@ -15,10 +15,10 @@ class HistMsg:
 
 
 def build_system(cfg, d: Decision) -> str:
-    name = cfg.get("bot.name", "Claude")
-    owner = cfg.get("bot.owner_name", "mein Besitzer")
-    partner = cfg.get("bot.partner_name", "die andere KI")
-    partner_owner = cfg.get("bot.partner_owner_name", "der andere Mensch")
+    name = (cfg.get("bot.name") or "Claude")
+    owner = (cfg.get("bot.owner_name") or "mein Besitzer")
+    partner = (cfg.get("bot.partner_name") or "die andere KI")
+    partner_owner = (cfg.get("bot.partner_owner_name") or "der andere Mensch")
     persona = (cfg.get("persona.system_prompt") or "").strip()
 
     rules = [

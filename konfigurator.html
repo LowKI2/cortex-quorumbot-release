@@ -244,6 +244,52 @@ details[open] > summary::before{content:"–"}
   .actions .in{padding:10px var(--space-4)}
 }
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ---------- Assistent ---------- */
+.wiz-back{position:fixed;inset:0;z-index:20;background:color-mix(in srgb,var(--bg-0) 70%,transparent);backdrop-filter:blur(6px);display:grid;place-items:center;padding:16px}
+.wiz-back.hidden{display:none}
+.wiz{position:relative;width:min(860px,100%);max-height:calc(100vh - 32px);display:grid;grid-template-rows:auto minmax(0,1fr) auto;
+  background:var(--surface-solid);border:1px solid var(--line-strong);border-radius:var(--radius-md);box-shadow:var(--shadow),0 0 60px -30px rgba(var(--acc-rgb),.6)}
+.wiz::before,.wiz::after{content:"";position:absolute;width:16px;height:16px;border-color:rgba(var(--acc-rgb),.7);border-style:solid;pointer-events:none}
+.wiz::before{top:-1px;left:-1px;border-width:2px 0 0 2px;border-top-left-radius:var(--radius-md)}
+.wiz::after{bottom:-1px;right:-1px;border-width:0 2px 2px 0;border-bottom-right-radius:var(--radius-md)}
+.wiz-h{padding:var(--space-5) var(--space-6) var(--space-4);border-bottom:1px solid var(--line)}
+.wiz-h .row{display:flex;align-items:center;gap:var(--space-3)}
+.wiz-h h2{margin:0;font-size:var(--text-lg)}
+.wiz-h .x{margin-left:auto}
+.steps{display:flex;gap:6px;margin-top:var(--space-4)}
+.steps span{flex:1;height:4px;border-radius:99px;background:var(--bg-3);transition:background-color var(--dur-base) var(--ease)}
+.steps span.done{background:rgba(var(--acc-rgb),.45)}
+.steps span.on{background:linear-gradient(90deg,var(--acc),var(--acc-2));box-shadow:0 0 10px -2px rgba(var(--acc-rgb),.8)}
+.wiz-b{overflow:auto;padding:var(--space-6)}
+.wiz-b h3{margin:0 0 6px;font-size:var(--text-xl)}
+.wiz-b p{color:var(--text-1);margin:0 0 var(--space-4)}
+.wiz-f{padding:var(--space-4) var(--space-6);border-top:1px solid var(--line);display:flex;gap:var(--space-3);align-items:center;flex-wrap:wrap}
+.wiz-f .sp{flex:1}
+ol.howto{margin:0 0 var(--space-5);padding:0;list-style:none;counter-reset:s;display:grid;gap:8px}
+ol.howto li{counter-increment:s;display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:start;font-size:var(--text-sm);color:var(--text-1)}
+ol.howto li::before{content:counter(s);font:600 var(--text-xs)/26px var(--font-mono);text-align:center;width:26px;height:26px;border-radius:var(--radius-chrome);background:rgba(var(--acc-rgb),.12);color:var(--acc);border:1px solid rgba(var(--acc-rgb),.35)}
+ol.howto b{color:var(--text-0);font-weight:600}
+ol.howto code,.wiz-b code{font-family:var(--font-mono);font-size:var(--text-xs);background:var(--bg-3);padding:1px 6px;border-radius:5px;color:var(--text-0)}
+.wiz-b a{color:var(--acc)}
+.modes{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:var(--gap)}
+.mode{text-align:left;display:flex;flex-direction:column;gap:6px;align-items:flex-start;padding:var(--space-5);border-radius:var(--radius-md);background:var(--bg-2);border:1px solid var(--line-strong)}
+.mode b{font-size:var(--text-md)}
+.mode span{color:var(--text-1);font-size:var(--text-sm);font-weight:400}
+.mode.on{border-color:var(--acc);box-shadow:0 0 0 3px rgba(var(--acc-rgb),.15),0 0 24px -10px rgba(var(--acc-rgb),.8)}
+.mode .tag{margin-top:4px}
+.idbox{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:var(--space-3);padding:10px 12px;border-radius:var(--radius-sm);background:var(--bg-2);border:1px solid var(--line);font-size:var(--text-sm)}
+.idbox:empty{display:none}
+.results{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.results li{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;align-items:start;padding:9px 12px;border-radius:var(--radius-sm);background:var(--bg-2);border:1px solid var(--line);font-size:var(--text-sm)}
+.results li .fix{grid-column:2;color:var(--text-1);font-size:var(--text-xs)}
+.results li .fix::before{content:"→ ";color:var(--acc)}
+.verdict{margin:var(--space-4) 0 0;padding:var(--space-4);border-radius:var(--radius-sm);font-weight:600;display:flex;gap:10px;align-items:center}
+.verdict.ok{background:rgba(var(--ok-rgb),.1);border:1px solid rgba(var(--ok-rgb),.4);color:var(--ok)}
+.verdict.bad{background:rgba(var(--bad-rgb),.08);border:1px solid rgba(var(--bad-rgb),.35);color:var(--bad)}
+.spin{width:14px;height:14px;border-radius:50%;border:2px solid rgba(var(--acc-rgb),.25);border-top-color:var(--acc);animation:rot .8s linear infinite}
+@keyframes rot{to{transform:rotate(360deg)}}
+@media (max-width:860px){.wiz-b{padding:var(--space-4)}.wiz-h,.wiz-f{padding-left:var(--space-4);padding-right:var(--space-4)}}
 </style>
 </head>
 <body>
@@ -313,11 +359,33 @@ details[open] > summary::before{content:"–"}
 
 <div class="actions"><div class="in">
   <button class="primary" id="save"><svg class="i"><use href="#i-save"/></svg>Speichern</button>
-  <button id="test"><svg class="i"><use href="#i-play"/></svg>Testanfrage</button>
+  <button id="check"><svg class="i"><use href="#i-check"/></svg>Vollständiger Test</button>
+  <button id="test" class="ghost"><svg class="i"><use href="#i-play"/></svg>Testanfrage</button>
+  <button id="wizbtn" class="ghost"><svg class="i"><use href="#i-bot"/></svg>Assistent</button>
   <button id="invite" class="ghost"><svg class="i"><use href="#i-link"/></svg>Einladungslink</button>
   <button id="reload" class="ghost" title="Neu laden" aria-label="Neu laden"><svg class="i"><use href="#i-refresh"/></svg></button>
   <span class="msg" id="msg"></span>
 </div></div>
+
+<div class="wiz-back hidden" id="wiz" role="dialog" aria-modal="true" aria-labelledby="wiz-title">
+  <div class="wiz">
+    <div class="wiz-h">
+      <div class="row">
+        <div class="logo" aria-hidden="true" style="width:30px;height:30px;border-radius:9px"><svg viewBox="0 0 24 24" style="width:16px;height:16px"><circle cx="12" cy="12" r="2.2"/><circle cx="12" cy="4.5" r="1.6"/><circle cx="19.5" cy="12" r="1.6"/><circle cx="12" cy="19.5" r="1.6"/><circle cx="4.5" cy="12" r="1.6"/><path d="M12 6.4v3.3M17.6 12h-3.3M12 17.6v-3.3M6.4 12h3.3"/></svg></div>
+        <div><h2 id="wiz-title">Einrichtung</h2><span class="label" id="wiz-step-label"></span></div>
+        <button class="ghost small x" id="wiz-close" aria-label="Assistent schließen">Schließen</button>
+      </div>
+      <div class="steps" id="wiz-steps"></div>
+    </div>
+    <div class="wiz-b" id="wiz-body"></div>
+    <div class="wiz-f">
+      <button class="ghost" id="wiz-prev">Zurück</button>
+      <span class="sp"></span>
+      <span class="msg" id="wiz-msg"></span>
+      <button class="primary" id="wiz-next">Weiter</button>
+    </div>
+  </div>
+</div>
 
 <script>
 const ICONS = {"Bot & Personen":"bot","Discord":"hash","Modell":"cpu","Persönlichkeit & Kontext":"user","Leitplanken":"shield","Chat-Rechte":"lock"};
@@ -540,10 +608,213 @@ $("#invite").onclick = async () => {
   catch{ prompt("Einladungslink:", r.url); }
 };
 
+$("#check").onclick = () => fullCheck();
+$("#wizbtn").onclick = () => wizOpen(0);
 $("#reload").onclick = () => { if(!dirty || confirm("Ungespeicherte Änderungen verwerfen?")) load(); };
 window.addEventListener("beforeunload", e => { if(dirty){ e.preventDefault(); e.returnValue=""; } });
 setInterval(async () => { if(!dirty){ const s = await api("/api/state"); S.status=s.status; S.budget=s.budget; renderHeader(); } }, 15000);
-load();
+/* ================= Einrichtungsassistent ================= */
+const W = {step:0, vals:{}};
+const WIZ_STEPS = ["Start","Discord-Bot","Modell","Einladen & IDs","Persönlichkeit","Test"];
+const MODES = {
+  anthropic:{t:"Anthropic-API", d:"Mit API-Key. Zahlung pro Nutzung, schnellste Antworten.", tag:"API-Key nötig"},
+  claude_code:{t:"Claude-Abo", d:"Über Claude Code mit deinem Pro/Max-Abo. Kein Key, zählt aufs Kontingent.", tag:"Claude Code nötig"},
+  openai:{t:"Lokal / anderes", d:"Ollama oder eine andere OpenAI-kompatible API.", tag:"Server nötig"},
+};
+const v = k => (k in W.vals) ? W.vals[k] : S.values[k];
+const wfield = (key, label, opts={}) => {
+  const val = v(key) ?? "";
+  const shown = Array.isArray(val) ? val.join("\n") : val;
+  const input = opts.area
+    ? `<textarea data-w="${key}" class="${opts.mono?"ids":""}" style="min-height:${opts.h||64}px" placeholder="${esc(opts.ph||"")}">${esc(shown)}</textarea>`
+    : `<input type="text" data-w="${key}" value="${esc(shown)}" ${opts.id?'inputmode="numeric"':""} placeholder="${esc(opts.ph||"")}" ${opts.list?`list="dl-${key}"`:""}>${opts.list?`<datalist id="dl-${key}">${opts.list.map(o=>`<option value="${esc(o)}">`).join("")}</datalist>`:""}`;
+  return `<div class="f${opts.wide?" wide":""}" data-wwrap="${key}"><label>${esc(label)}</label>${input}${opts.help?`<span class="help">${opts.help}</span>`:""}<span class="err" data-werr="${key}"></span></div>`;
+};
+const secretBox = (name, label, help) => `
+  <div class="f wide"><label>${esc(label)} <span class="tag ${S.secrets[name]?"ok":"bad"}">${S.secrets[name]?"gesetzt":"leer"}</span></label>
+    <div class="secret"><input type="password" autocomplete="off" spellcheck="false" placeholder="hier einfügen" data-wsecret="${esc(name)}">
+    <button data-wsetsecret="${esc(name)}">Setzen</button></div>${help?`<span class="help">${help}</span>`:""}</div>`;
+
+function wizRender(){
+  const prov = v("llm.provider") || "anthropic";
+  $("#wiz-steps").innerHTML = WIZ_STEPS.map((_,i)=>`<span class="${i<W.step?"done":i===W.step?"on":""}"></span>`).join("");
+  $("#wiz-step-label").textContent = `Schritt ${W.step+1} von ${WIZ_STEPS.length} · ${WIZ_STEPS[W.step]}`;
+  $("#wiz-prev").style.visibility = W.step ? "visible" : "hidden";
+  $("#wiz-next").textContent = W.step === WIZ_STEPS.length-1 ? "Fertig" : "Weiter";
+  $("#wiz-msg").textContent = ""; $("#wiz-msg").className = "msg";
+  const B = $("#wiz-body");
+  if(W.step === 0){
+    B.innerHTML = `<h3>Willkommen bei Cortex QuorumBot</h3>
+      <p>Der Assistent führt dich in etwa 15 Minuten durch die Einrichtung deines Bots. Jeder Mensch in der Runde richtet seinen <b>eigenen</b> Bot ein.</p>
+      <ol class="howto"><li><span><b>Du brauchst:</b> ein Discord-Konto und einen Server, auf dem du Bots hinzufügen darfst (am besten einen eigenen Test-Server).</span></li>
+      <li><span>Python läuft bereits – sonst wäre diese Seite nicht offen.</span></li>
+      <li><span>Wähle, womit dein Bot denkt:</span></li></ol>
+      <div class="modes">${Object.entries(MODES).map(([k,m])=>`<button class="mode ${prov===k?"on":""}" data-mode="${k}"><b>${m.t}</b><span>${m.d}</span><span class="tag info">${m.tag}</span></button>`).join("")}</div>`;
+  }
+  if(W.step === 1){
+    B.innerHTML = `<h3>Discord-Bot anlegen</h3>
+      <ol class="howto">
+        <li><span>Öffne das <a href="https://discord.com/developers/applications" target="_blank" rel="noopener">Discord Developer Portal</a> und klick auf <b>New Application</b>. Name z. B. „${esc(v("bot.name")||"Nova")}“.</span></li>
+        <li><span>Links auf <b>Bot</b> → unter <b>Privileged Gateway Intents</b> den <b>Message Content Intent</b> einschalten → <b>Save Changes</b>.</span></li>
+        <li><span>Auf derselben Seite <b>Reset Token</b> → bestätigen → Token kopieren. Er wird nur einmal angezeigt und gehört niemandem sonst.</span></li>
+        <li><span>Token unten einfügen und <b>Setzen</b> klicken. Der Assistent erkennt deinen Bot dann automatisch.</span></li>
+      </ol>
+      <div class="grid">${secretBox(S.secrets && Object.keys(S.secrets)[0] || "DISCORD_TOKEN","Discord-Token")}</div>
+      <div class="idbox" id="w-ident"></div>`;
+    if(S.secrets[Object.keys(S.secrets)[0]]) wizIdentity();
+  }
+  if(W.step === 2){
+    const keyName = Object.keys(S.secrets)[1] || "ANTHROPIC_API_KEY";
+    let inner = "";
+    if(prov === "anthropic") inner = `<h3>API-Key eintragen</h3>
+      <ol class="howto"><li><span>Öffne die <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">Anthropic-Konsole → API Keys</a> und erstelle einen Key.</span></li>
+      <li><span>Setz unter <b>Limits</b> ein monatliches Ausgabelimit – zusätzlich zum Tagesbudget im Bot.</span></li>
+      <li><span>Key unten einfügen und <b>Setzen</b> klicken.</span></li></ol>
+      <div class="grid">${secretBox(keyName,"API-Key","Wird nur in der .env auf diesem Rechner gespeichert.")}
+      ${wfield("llm.model","Modell",{list:["claude-sonnet-5-5","claude-haiku-5-5","claude-opus-5-5"],help:"Sonnet ist ein guter Standard, Haiku günstiger und schneller."})}</div>`;
+    if(prov === "claude_code") inner = `<h3>Claude-Abo verbinden</h3>
+      <ol class="howto"><li><span>Claude Code installieren: <a href="https://claude.com/claude-code" target="_blank" rel="noopener">claude.com/claude-code</a>.</span></li>
+      <li><span>Einmal ein Terminal öffnen, <code>claude</code> eingeben und mit deinem Abo einloggen.</span></li>
+      <li><span>Testen: <code>claude -p "sag hallo"</code> muss antworten. Dann hier auf <b>Prüfen</b>.</span></li></ol>
+      <div class="grid">${wfield("llm.model","Modell",{list:["sonnet","haiku","opus"],help:"Kurzformen: sonnet, haiku, opus."})}
+      ${wfield("claude_code.path","Pfad zu claude",{help:"Nur ändern, wenn „claude“ nicht gefunden wird – dann den vollen Pfad zu claude.exe."})}</div>
+      <p style="margin-top:var(--space-4)"><button id="w-cc">Prüfen</button></p><div class="idbox" id="w-ccres"></div>
+      ${S.secrets[keyName]?`<div class="ov" style="margin-top:12px"><span class="tag warn">Hinweis</span>${esc(keyName)} ist gesetzt – beim Abo besser leeren (Zugangsdaten → Leeren). Der Bot gibt ihn ohnehin nicht weiter.</div>`:""}`;
+    if(prov === "openai") inner = `<h3>Lokales Modell</h3>
+      <ol class="howto"><li><span>Ollama installieren und ein Modell laden, z. B. <code>ollama pull llama3.3</code>.</span></li>
+      <li><span>Adresse und Modellname eintragen. Ein Key ist bei Ollama nicht nötig.</span></li></ol>
+      <div class="grid">${wfield("llm.base_url","Base-URL",{ph:"http://localhost:11434/v1"})}${wfield("llm.model","Modell",{ph:"llama3.3"})}</div>`;
+    B.innerHTML = inner;
+  }
+  if(W.step === 3){
+    B.innerHTML = `<h3>Bot einladen und IDs holen</h3>
+      <ol class="howto">
+        <li><span><b>Einladen:</b> <button class="small" id="w-invite">Einladungslink öffnen</button> → Server wählen → Autorisieren.</span></li>
+        <li><span>In Discord den Entwicklermodus einschalten: <b>Einstellungen → Erweitert → Entwicklermodus</b>.</span></li>
+        <li><span>Rechtsklick auf <b>deinen eigenen Namen</b> → <b>ID kopieren</b>.</span></li>
+        <li><span>Rechtsklick auf den <b>Bot der anderen Person</b> (nicht auf die Person) → ID kopieren. Hat sie noch keinen Bot: leer lassen und später nachtragen.</span></li>
+        <li><span>Rechtsklick auf euren Kanal → ID kopieren. So liest der Bot nur dort mit.</span></li>
+      </ol>
+      <div class="grid">
+        ${wfield("bot.owner_id","Deine User-ID",{id:true,ph:"z. B. 123456789012345678",help:"Nur diese Person kann den Bot ansprechen."})}
+        ${wfield("bot.partner_bot_ids","User-ID des anderen Bots",{area:true,mono:true,ph:"eine ID pro Zeile"})}
+        ${wfield("discord.allowed_channel_ids","Kanal-ID(s)",{area:true,mono:true,ph:"eine ID pro Zeile – leer = alle Kanäle"})}
+      </div>`;
+  }
+  if(W.step === 4){
+    B.innerHTML = `<h3>Namen und Persönlichkeit</h3><p>So stellt sich dein Bot in der Runde vor.</p>
+      <div class="grid">
+        ${wfield("bot.name","Name deines Bots",{ph:"z. B. Nova"})}${wfield("bot.owner_name","Dein Name",{ph:"so spricht dich der Bot an"})}
+        ${wfield("bot.partner_name","Name des anderen Bots",{ph:"z. B. Kai"})}${wfield("bot.partner_owner_name","Name der anderen Person")}
+        ${wfield("persona.system_prompt","Persönlichkeit",{area:true,h:120,wide:true,help:"Frei formulierbar. Die Leitplanken gelten unabhängig davon."})}
+      </div>`;
+  }
+  if(W.step === 5){
+    B.innerHTML = `<h3>Test</h3><p>Prüft Discord-Zugang, Rechte, IDs und schickt eine echte Testanfrage an das Modell.</p>
+      <p><button class="primary" id="w-run">${icon("play")}Test starten</button></p>
+      <div id="w-results"></div>`;
+  }
+  B.scrollTop = 0;
+}
+
+function wizCollect(){
+  document.querySelectorAll("#wiz-body [data-w]").forEach(el => { W.vals[el.dataset.w] = el.value; });
+}
+async function wizSave(){
+  wizCollect();
+  document.querySelectorAll("#wiz-body [data-werr]").forEach(e=>e.textContent="");
+  document.querySelectorAll("#wiz-body .f.bad").forEach(e=>e.classList.remove("bad"));
+  if(!Object.keys(W.vals).length) return true;
+  const r = await api("/api/save",{values:W.vals, draft:true});
+  if(r.field_errors){
+    for(const [k,m] of Object.entries(r.field_errors)){
+      document.querySelector(`[data-wwrap="${k}"]`)?.classList.add("bad");
+      const e = document.querySelector(`[data-werr="${k}"]`); if(e) e.textContent = m;
+    }
+    wmsg("Bitte die markierten Felder prüfen.","err"); return false;
+  }
+  W.vals = {}; S = await api("/api/state"); return true;
+}
+function wmsg(t,k="info"){ const m=$("#wiz-msg"); m.textContent=t; m.className="msg "+k; }
+
+async function wizIdentity(){
+  const box = $("#w-ident"); if(!box) return;
+  box.innerHTML = `<span class="spin"></span>Prüfe Token …`;
+  const r = await api("/api/discord/identity");
+  if(!r.ok){ box.innerHTML = `<span class="tag bad">Fehler</span>${esc(r.errors.join(" "))}`; return; }
+  if(r.application_id && String(S.values["discord.application_id"]||"") !== r.application_id){
+    await api("/api/save",{values:{"discord.application_id": r.application_id}, draft:true}); S = await api("/api/state");
+  }
+  box.innerHTML = `<span class="tag ok">Bot erkannt</span><b>${esc(r.bot_name)}</b><span class="mono" style="color:var(--text-2)">App ${esc(r.application_id||"?")}</span>
+    ${r.intent?`<span class="tag ok">Message Content an</span>`:`<span class="tag bad">Message Content aus</span><span>Schritt 2 erledigen, dann</span><button class="small" id="w-recheck">erneut prüfen</button>`}`;
+}
+
+function resultsHtml(r){
+  return `<ul class="results">${r.results.map(x=>`<li><span class="tag ${x.status==="ok"?"ok":x.status==="warn"?"warn":x.status==="fail"?"bad":"info"}">${{ok:"OK",warn:"Hinweis",fail:"Fehler",skip:"–"}[x.status]}</span><span><b>${esc(x.name)}</b> · ${esc(x.detail)}</span>${x.fix?`<span class="fix">${esc(x.fix)}</span>`:""}</li>`).join("")}</ul>
+    <div class="verdict ${r.ready?"ok":"bad"}">${r.ready?icon("check"):""}${esc(r.summary)}</div>`;
+}
+
+async function wizRunTest(){
+  const out = $("#w-results"); out.innerHTML = `<p style="display:flex;gap:10px;align-items:center"><span class="spin"></span>Test läuft … (bis zu einer Minute)</p>`;
+  const r = await api("/api/check",{with_request:true});
+  if(!r.ok){ out.innerHTML = `<div class="verdict bad">${esc(r.errors.join(" "))}</div>`; return; }
+  out.innerHTML = resultsHtml(r) + (r.ready ? `<p style="margin-top:var(--space-4)">${S.status && S.status.age<90 ? "Der Bot läuft bereits." : `<button class="primary" id="w-start">${icon("play")}Bot jetzt starten</button> <span class="help">öffnet ein eigenes Fenster – zum Beenden das Fenster schließen. Später einfach <code>start.bat</code> doppelklicken.</span>`}</p>
+    <ol class="howto" style="margin-top:var(--space-4)"><li><span>In Discord im Kanal schreiben: <code>@${esc(S.values["bot.name"]||"Bot")} hallo</code> – der Bot antwortet.</span></li>
+    <li><span>Läuft der andere Bot auch: <code>!dialog 4 Testthema</code> – beide reden 4 Runden. <code>!stopp</code> beendet.</span></li>
+    <li><span><code>/${esc((S.values["bot.name"]||"bot").toLowerCase().replace(/[^a-z0-9_-]/g,""))} panel</code> öffnet die Einstellungen in Discord.</span></li></ol>` : "");
+}
+
+function wizOpen(step=0){ W.step = step; W.vals = {}; $("#wiz").classList.remove("hidden"); wizRender(); }
+function wizClose(){ $("#wiz").classList.add("hidden"); load(); }
+
+$("#wiz-close").onclick = wizClose;
+$("#wiz-prev").onclick = async () => { if(await wizSave()){ W.step--; wizRender(); } };
+$("#wiz-next").onclick = async () => {
+  if(!(await wizSave())) return;
+  if(W.step === WIZ_STEPS.length-1){ await api("/api/wizard/done",{}); wizClose(); msg("Einrichtung abgeschlossen.","ok"); return; }
+  W.step++; wizRender();
+};
+$("#wiz").addEventListener("click", async e => {
+  const t = e.target.closest("button"); if(!t) return;
+  if(t.dataset.mode){ W.vals["llm.provider"] = t.dataset.mode;
+    if(t.dataset.mode==="claude_code" && !/^(sonnet|haiku|opus)$/.test(v("llm.model")||"")) W.vals["llm.model"]="sonnet";
+    if(t.dataset.mode==="anthropic" && /^(sonnet|haiku|opus)$/.test(v("llm.model")||"")) W.vals["llm.model"]="claude-sonnet-5-5";
+    await wizSave(); wizRender(); }
+  if(t.dataset.wsetsecret){
+    const inp = document.querySelector(`[data-wsecret="${t.dataset.wsetsecret}"]`);
+    if(!inp.value.trim()) return wmsg("Kein Wert eingegeben.","err");
+    wizCollect();
+    const r = await api("/api/secret",{name:t.dataset.wsetsecret,value:inp.value});
+    S = await api("/api/state"); wizRender(); wmsg(r.ok?"Gespeichert.":r.errors.join(" "), r.ok?"ok":"err");
+  }
+  if(t.id==="w-recheck") wizIdentity();
+  if(t.id==="w-invite"){ const r = await api("/api/invite"); if(!r.ok) return wmsg(r.errors.join(" ")+" Zuerst Schritt 2 erledigen.","err"); window.open(r.url,"_blank","noopener"); }
+  if(t.id==="w-cc"){
+    await wizSave(); const box=$("#w-ccres"); box.innerHTML=`<span class="spin"></span>Prüfe …`;
+    const r = await api("/api/check",{with_request:false});
+    const cc = (r.results||[]).find(x=>x.name==="Claude Code");
+    box.innerHTML = cc ? `<span class="tag ${cc.status==="ok"?"ok":"bad"}">${cc.status==="ok"?"OK":"Fehler"}</span><span>${esc(cc.detail)}</span>${cc.fix?`<span class="help">${esc(cc.fix)}</span>`:""}` : esc((r.errors||["?"]).join(" "));
+  }
+  if(t.id==="w-run"){ t.disabled = true; await wizSave(); await wizRunTest(); t.disabled = false; }
+  if(t.id==="w-start"){ const r = await api("/api/bot/start",{}); wmsg(r.ok?"Bot startet in einem eigenen Fenster …":r.errors.join(" "), r.ok?"ok":"err");
+    if(r.ok) setTimeout(async()=>{ S = await api("/api/state"); renderHeader(); }, 8000); }
+});
+document.addEventListener("keydown", e => { if(e.key==="Escape" && !$("#wiz").classList.contains("hidden")) wizClose(); });
+
+/* Vollständiger Test auch außerhalb des Assistenten */
+async function fullCheck(){
+  if(dirty) return msg("Erst speichern, dann testen.","warn");
+  $("#check").disabled = true; msg("Vollständiger Test läuft …","info");
+  const r = await api("/api/check",{with_request:true});
+  $("#check").disabled = false;
+  document.querySelector("#notes-card .out")?.remove();
+  if(!r.ok) return msg(r.errors.join(" "),"err");
+  $("#notes-card").insertAdjacentHTML("beforeend", `<div class="out fade" style="white-space:normal"><span class="label">Selbsttest</span>${resultsHtml(r)}</div>`);
+  msg(r.summary, r.ready?"ok":"err");
+  $("#notes-card").scrollIntoView({behavior:"smooth"});
+}
+
+load().then(()=>{ if(!S.wizard_done && (!S.exists || (S.errors||[]).length)) wizOpen(0); });
 </script>
 </body>
 </html>

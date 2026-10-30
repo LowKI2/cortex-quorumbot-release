@@ -111,6 +111,7 @@ class LLM:
                 stdin=asyncio.subprocess.PIPE,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
+                env=abo_env(),
             )
             try:
                 out, err = await asyncio.wait_for(
@@ -127,6 +128,14 @@ class LLM:
                 pass
 
         return parse_claude_json(out.decode("utf-8", "replace"), err.decode("utf-8", "replace"), proc.returncode)
+
+
+def abo_env() -> dict:
+    """Umgebung für `claude -p` ohne API-Keys – sonst rechnet Claude Code über den Key ab statt übers Abo."""
+    env = dict(os.environ)
+    for k in ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN"):
+        env.pop(k, None)
+    return env
 
 
 def render_transcript(messages: list[dict]) -> str:
