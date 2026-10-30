@@ -42,7 +42,7 @@ SECTIONS = [
         {"key": "llm.max_tokens", "label": "Max. Antwort-Tokens", "type": "int", "min": 50, "max": 8000,
          "default": 800, "show_if": NOT_CC},
         {"key": "llm.temperature", "label": "Temperatur", "type": "float", "min": 0, "max": 1,
-         "default": 0.7, "show_if": NOT_CC},
+         "default": 0.7, "show_if": NOT_CC, "help": "Nur für OpenAI-kompatible/ältere Modelle – bei aktuellen Claude-Modellen wird sie nicht mehr verwendet."},
         {"key": "llm.api_key_env", "label": "Name der API-Key-Variable in .env", "type": "text",
          "default": "ANTHROPIC_API_KEY", "show_if": NOT_CC, "advanced": True},
         {"key": "llm.base_url", "label": "Base-URL", "type": "text", "default": "",

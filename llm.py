@@ -54,6 +54,8 @@ class LLM:
         extra = {} if temperature is None else {"temperature": float(temperature)}
 
         if provider == "anthropic":
+            if not _accepts(client.messages.create, "temperature"):
+                extra = {}          # anthropic-SDK ab 2.x kennt temperature nicht mehr (neue Modelle steuern das selbst)
             resp = await client.messages.create(
                 model=model, max_tokens=max_tokens, system=system, messages=messages, **extra
             )
@@ -137,6 +139,16 @@ class LLM:
                         pass
 
         return parse_claude_json(out.decode("utf-8", "replace"), err.decode("utf-8", "replace"), proc.returncode)
+
+
+def _accepts(fn, name: str) -> bool:
+    """Nimmt die Funktion diesen Parameter an? (SDK-Versionen unterscheiden sich.)"""
+    import inspect
+    try:
+        params = inspect.signature(fn).parameters
+    except (TypeError, ValueError):
+        return True
+    return name in params or any(p.kind is inspect.Parameter.VAR_KEYWORD for p in params.values())
 
 
 def abo_env() -> dict:

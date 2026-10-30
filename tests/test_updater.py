@@ -191,3 +191,28 @@ def test_exe_unterprozesse_bekommen_eigene_umgebung(monkeypatch):
     assert env == {"PATH": "x", "PYINSTALLER_RESET_ENVIRONMENT": "1"}
     monkeypatch.setattr(version, "frozen", lambda: False)
     assert version.child_env({"PATH": "x"}) == {"PATH": "x"}
+
+
+def test_anthropic_sdk_ohne_temperature(monkeypatch):
+    import asyncio
+    from types import SimpleNamespace
+    from config import Config
+    from llm import LLM
+    seen = {}
+
+    class Messages:
+        async def create(self, *, max_tokens, messages, model, system=None, timeout=None):   # wie anthropic 2.x
+            seen.update(model=model)
+            return SimpleNamespace(content=[SimpleNamespace(type="text", text="hallo")],
+                                   usage=SimpleNamespace(input_tokens=1, output_tokens=2))
+
+    class OldMessages(Messages):
+        async def create(self, *, max_tokens, messages, model, system=None, temperature=None):
+            seen.update(temperature=temperature)
+            return await super().create(max_tokens=max_tokens, messages=messages, model=model)
+    c = Config("x.yaml", data={"llm": {"provider": "anthropic", "model": "m", "temperature": 0.5}})
+    for msgs in (Messages(), OldMessages()):
+        llm = LLM(c)
+        monkeypatch.setattr(llm, "_client_for", lambda m=msgs: ("anthropic", SimpleNamespace(messages=m)))
+        assert asyncio.run(llm.complete("S", [{"role": "user", "content": "hi"}]))[0] == "hallo"
+    assert seen["temperature"] == 0.5
