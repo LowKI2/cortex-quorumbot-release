@@ -39,7 +39,7 @@ def run(g, m):
 
 
 def test_nur_besitzer_und_nur_mit_erwaehnung():
-    g = Guard(cfg())
+    g = Guard(cfg(foreign_reply=False))
     assert not run(g, msg(PARTNER_OWNER, "hey Nova", mentions_me=True)).respond
     assert not run(g, msg(FREMD, "hey", mentions_me=True)).respond
     assert not run(g, msg(OWNER, "ohne mention")).respond
@@ -173,3 +173,46 @@ def test_verlauf_abwechselnd():
     assert out[0]["role"] == "user" and "@Nova frage" in out[0]["content"]
     assert "Kai: ergänzung" in out[0]["content"] and "Runde" not in out[0]["content"]
     assert len(out) == 1
+
+
+def test_standardantwort_an_fremde_mit_pause():
+    clock = Clock()
+    c = cfg()
+    get = c.get
+    c.get = lambda k, d=None: "Basti" if k == "bot.owner_name" else get(k, d)
+    g = Guard(c, clock=clock)
+    m = Incoming(CH, FREMD, False, "<@1> hallo", True, mention_ids=(ME,), author_name="Max")
+    d = run(g, m)
+    assert d.respond and d.mode == "foreign" and "Basti" in d.text and "Max" in d.text
+    assert not run(g, m).respond                                  # Pause pro Person
+    clock.t += 601
+    assert run(g, m).respond
+    assert not run(g, msg(FREMD, "ohne mich zu erwähnen")).respond
+    # Besitzer des Partners spricht beide Bots an → still bleiben
+    both = Incoming(CH, PARTNER_OWNER, False, "<@1> <@2> was meint ihr?", True, mention_ids=(ME, PARTNER))
+    assert not run(g, both).respond
+
+
+def test_beide_bots_erwaehnt_startet_dialog_und_partner_macht_mit():
+    clock = Clock()
+    mine, partner = Guard(cfg(), clock=clock), Guard(Config("p.yaml", data={
+        "bot": {"owner_id": PARTNER_OWNER, "partner_bot_ids": [ME], "name": "Kai"},
+        "discord": {"allowed_channel_ids": [CH]}, "guardrails": {"dialog_default_rounds": 4}}), clock=clock)
+    ask = Incoming(CH, OWNER, False, "<@1> <@2> Godot oder HTML?", True, mention_ids=(ME, PARTNER))
+    d = run(mine, ask)
+    assert d.mode == "dialog_start" and d.limit == 6 and d.topic == "Godot oder HTML?"
+    as_partner = Incoming(CH, OWNER, False, ask.content, True, mention_ids=(ME, PARTNER))
+    assert not run(partner, as_partner).respond                   # Partner antwortet nicht dem fremden Besitzer
+    # Meine Eröffnung erwähnt den Partner – dort geht es weiter
+    opening = Incoming(CH, ME, True, "<@2> Ich sage Godot.\n-# Runde 1/6", True, mention_ids=(PARTNER,))
+    mine.observe(Incoming(CH, ME, True, opening.content, False, is_own=True))
+    d2 = run(partner, opening)
+    assert d2.respond and d2.mode == "dialog" and d2.turn == 2
+
+
+def test_rollen_erwaehnung_zaehlt_als_bot_erwaehnung():
+    from types import SimpleNamespace
+    from bot import mentioned_ids
+    m = SimpleNamespace(mentions=[SimpleNamespace(id=5)],
+                        role_mentions=[SimpleNamespace(tags=SimpleNamespace(bot_id=1)), SimpleNamespace(tags=None)])
+    assert mentioned_ids(m) == {5, 1}

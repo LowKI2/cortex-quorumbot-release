@@ -22,6 +22,7 @@ END_MARKER = "[ENDE]"
 HARD_MAX_ROUNDS = 30
 HARD_MAX_MINUTES = 30
 HARD_MIN_COOLDOWN = 1.0
+DEFAULT_FOREIGN = "Hey {name}, ich höre nur auf {owner}. Sprich am besten deinen eigenen Bot an 🙂"
 
 
 @dataclass
@@ -32,17 +33,20 @@ class Incoming:
     content: str
     mentions_me: bool
     is_own: bool = False
+    mention_ids: tuple = ()     # alle erwähnten Nutzer/Bots
+    author_name: str = ""
 
 
 @dataclass
 class Decision:
     respond: bool
     reason: str
-    mode: str = ""      # "owner" | "dialog_start" | "dialog"
+    mode: str = ""      # "owner" | "dialog_start" | "dialog" | "foreign" (Standardantwort ohne KI)
     turn: int = 0       # Nummer dieser Bot-Antwort in der Kette
     limit: int = 0      # max. Bot-Antworten in dieser Kette
     final: bool = False  # letzte erlaubte Runde: Fazit, nicht weiterreichen
     topic: str = ""
+    text: str = ""      # fertiger Text bei mode "foreign"
 
 
 @dataclass
@@ -68,6 +72,7 @@ class Guard:
         self.cfg = cfg
         self.clock = clock
         self.states: dict[int, ChannelState] = {}
+        self.foreign_seen: dict[tuple[int, int], float] = {}
 
     # --- Hilfen -------------------------------------------------------
     def g(self, key, default=None):
@@ -75,6 +80,27 @@ class Guard:
 
     def state(self, channel_id: int) -> ChannelState:
         return self.states.setdefault(channel_id, ChannelState())
+
+    def partner_ids(self) -> list[int]:
+        return [int(x) for x in (self.g("bot.partner_bot_ids") or [])]
+
+    def foreign_reply(self, m: Incoming) -> Decision:
+        """Fremder Mensch spricht mich an: kurze Standardantwort ohne KI (mit Pause pro Person)."""
+        if not self.g("guardrails.foreign_reply", True) or not m.mentions_me:
+            return no("Mensch ist nicht mein Besitzer")
+        if set(m.mention_ids) & set(self.partner_ids()):
+            return no("Besitzer des Partner-Bots startet etwas – still bleiben")
+        key, now = (m.channel_id, m.author_id), self.clock()
+        if now - self.foreign_seen.get(key, -1e9) < float(self.g("guardrails.foreign_reply_cooldown", 600)):
+            return no("Standardantwort an diese Person kürzlich gesendet")
+        self.foreign_seen[key] = now
+        owner = self.g("bot.owner_name") or "meinen Besitzer"
+        tpl = self.g("guardrails.foreign_reply_text") or DEFAULT_FOREIGN
+        try:
+            text = tpl.format(owner=owner, name=m.author_name or "du", bot=self.g("bot.name") or "")
+        except (KeyError, IndexError, ValueError):
+            text = DEFAULT_FOREIGN.format(owner=owner, name=m.author_name or "du", bot="")
+        return Decision(True, "fremder Mensch – Standardantwort", "foreign", text=text)
 
     def channel_allowed(self, channel_id: int) -> bool:
         allowed = self.g("discord.allowed_channel_ids") or []
@@ -151,7 +177,7 @@ class Guard:
 
         if not m.author_is_bot:
             if m.author_id != int(self.g("bot.owner_id", 0)):
-                return no("Mensch ist nicht mein Besitzer")
+                return self.foreign_reply(m)
             if self.is_stop(m.content):
                 return no("Stopp")
             cmd = self.parse_command(m.content)
@@ -170,6 +196,13 @@ class Guard:
                 return no("Antworten an Besitzer abgeschaltet")
             if self.g("guardrails.require_mention_from_owner", True) and not m.mentions_me:
                 return no("nicht erwähnt")
+            if (m.mentions_me and set(m.mention_ids) & set(self.partner_ids())
+                    and self.g("guardrails.dialog_on_double_mention", True) and self.g("guardrails.allow_bot_dialog", True)):
+                # Besitzer spricht beide Bots an → Dialog mit Standard-Rundenzahl
+                st.halted, st.in_dialog, st.bot_turns, st.last_human_ts = False, False, 0, self.clock()
+                limit = min(max(1, int(self.g("guardrails.dialog_default_rounds", 6))), self.max_rounds())
+                topic = re.sub(r"<@!?\d+>", "", m.content).strip()
+                return Decision(True, "Besitzer spricht beide Bots an", "dialog_start", 1, limit, final=limit <= 1, topic=topic)
             return Decision(True, "Besitzer fragt", "owner", 1, 1, final=True)
 
         # Absender ist ein Bot

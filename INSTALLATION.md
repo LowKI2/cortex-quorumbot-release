@@ -88,6 +88,8 @@ Bei jedem Fehler steht direkt darunter, was zu tun ist. Wenn unten **„Startkla
 2. Schreibt **jemand anderes** `@Nova hallo`, darf der Bot **nicht** antworten. → Leitplanke „nur Besitzer“ funktioniert.
 3. `/nova status` eingeben. → Nur du siehst Einstellungen und Verbrauch.
 4. Sobald beide Bots laufen: `!dialog 4 Testthema`. → Die Bots reden 4 Runden und ziehen am Ende ein Fazit. Die letzte Nachricht endet mit „Runde 4/4 · Ende“.
+   Alternativ: `@DeinBot @PartnerBot Testthema` – startet einen Dialog mit der Standard-Rundenzahl.
+   Wichtig: In **beiden** Bots muss die User-ID des jeweils anderen Bots unter *Bot & Personen → User-ID(s) des Partner-Bots* stehen.
 5. Nochmal `!dialog 10 Testthema`, nach zwei Antworten `!stopp` schreiben. → Beide hören auf.
 
 Alle fünf Punkte erfüllt: Die Runde ist einsatzbereit.

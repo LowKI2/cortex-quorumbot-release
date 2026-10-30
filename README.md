@@ -8,7 +8,7 @@
 
 **Text- und Sprachbot für Discord** – eine Runde aus Menschen und KI-Bots, mit festen Leitplanken. Ein Werkzeug von BZi Studio.
 
-> **Status: Beta (v0.6.0).** Leitplanken und Abo-Anbindung sind automatisch getestet, der Betrieb mit zwei Bots in echtem Discord noch nicht. Bitte erst in einem eigenen Test-Server ausprobieren.
+> **Status: Beta (v0.6.2).** Leitplanken und Abo-Anbindung sind automatisch getestet, der Betrieb mit zwei Bots in echtem Discord noch nicht. Bitte erst in einem eigenen Test-Server ausprobieren.
 
 Gedacht für eine Runde aus zwei Menschen und zwei KIs. Jede Person betreibt **einen eigenen Bot** auf dem eigenen Rechner, mit eigenem API-Key **oder eigenem Claude-Abo**. Gleicher Code, eigene `config.yaml`.
 
@@ -143,7 +143,7 @@ Das Modul ist unabhängig vom Rest des Bots und lässt sich in jeden discord.py-
 | Befehl | Wirkung |
 |---|---|
 | `@Nova <Frage>` | Bot antwortet dir |
-| `!dialog [runden] <thema>` | Bot eröffnet einen Dialog mit dem Partner-Bot |
+| `!dialog [runden] <thema>` | Bot eröffnet einen Dialog mit dem Partner-Bot (alternativ: beide Bots in einer Nachricht erwähnen) |
 | `!stopp` | beendet einen laufenden Dialog (darf **jeder** Mensch im Kanal) |
 | `!status` | aktuelle Einstellungen und Budget |
 | `!set <schlüssel> <wert>` | Einstellung live ändern, z. B. `!set llm.temperature 0.4` |
@@ -174,7 +174,8 @@ Werte aus `!set` landen in `config.overrides.json` und überleben einen Neustart
 
 ### Wie der Dialog sicher bleibt
 
-- Ein Dialog startet **nur durch einen Menschen** (`!dialog`). Von selbst fangen die Bots nie an.
+- Ein Dialog startet **nur durch einen Menschen**: `!dialog`, `/name dialog` oder indem der Besitzer **beide Bots in einer Nachricht erwähnt** (`@MeinBot @PartnerBot was meint ihr zu …?`). Von selbst fangen die Bots nie an.
+- Erwähnt ein **anderer Mensch** den Bot, antwortet er nur mit einer kurzen Standardantwort ohne KI (Text im Konfigurator unter *Leitplanken* änderbar, höchstens alle 10 min pro Person). Erwähnt der Besitzer des Partner-Bots beide Bots, bleibt dieser Bot still – der Partner eröffnet.
 - Jede Dialog-Nachricht trägt einen Footer `Runde x/y`. Jeder Bot zählt selbst mit und nimmt das **kleinere** Limit aus Footer und eigener Config. Ein falsch eingestellter Partner kann das eigene Limit also nicht aushebeln.
 - Weitergereicht wird nur per @-Erwähnung. In der letzten Runde, bei `[ENDE]` (Einigung) oder bei Wiederholung lässt der Bot die Erwähnung weg, und der Dialog ist vorbei. Die letzte Antwort ist ein Fazit.
 - Schreibt ein Mensch während eines Dialogs dazwischen, pausiert der Dialog. Ein neues `!dialog` setzt ihn fort.

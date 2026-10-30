@@ -35,6 +35,17 @@ HILFE = """**Befehle** (nur für meinen Besitzer)
 `{p}hilfe` – diese Übersicht"""
 
 
+def mentioned_ids(message) -> set[int]:
+    """Erwähnte Nutzer – auch wenn statt des Bots seine automatische Rolle gleichen Namens erwähnt wurde
+    (Discord schlägt beim Tippen von @Name oft die Rolle zuerst vor)."""
+    ids = {u.id for u in message.mentions}
+    for role in getattr(message, "role_mentions", []) or []:
+        bot_id = getattr(getattr(role, "tags", None), "bot_id", None)
+        if bot_id:
+            ids.add(int(bot_id))
+    return ids
+
+
 class RundenBot(discord.Client):
     def __init__(self, cfg: Config):
         intents = discord.Intents.default()
@@ -116,13 +127,16 @@ class RundenBot(discord.Client):
             log.info("Config neu geladen")
         if message.guild is None:
             return  # keine DMs
+        mentioned = mentioned_ids(message)
         inc = Incoming(
             channel_id=message.channel.id,
             author_id=message.author.id,
             author_is_bot=message.author.bot,
             content=message.content,
-            mentions_me=self.user in message.mentions,
+            mentions_me=self.user.id in mentioned,
             is_own=message.author.id == self.user.id,
+            mention_ids=tuple(mentioned),
+            author_name=getattr(message.author, "display_name", "") or message.author.name,
         )
         self.guard.observe(inc)
         if inc.is_own:
@@ -136,7 +150,12 @@ class RundenBot(discord.Client):
 
         d = self.guard.decide(inc)
         if not d.respond:
-            log.debug("ignoriert (%s): %s", d.reason, message.content[:60])
+            # Wenn der Bot direkt angesprochen wurde, Grund sichtbar loggen – hilft bei „reagiert nicht“.
+            (log.info if inc.mentions_me else log.debug)("ignoriert von %s (%s): %s", message.author, d.reason, message.content[:80])
+            return
+        if d.mode == "foreign":
+            log.info("Standardantwort an %s", message.author)
+            await message.reply(d.text, mention_author=False, allowed_mentions=discord.AllowedMentions.none())
             return
 
         ok, why = self.budget.check()
