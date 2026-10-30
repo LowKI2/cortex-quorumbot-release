@@ -8,7 +8,7 @@
 
 **Text- und Sprachbot für Discord** – eine Runde aus Menschen und KI-Bots, mit festen Leitplanken. Ein Werkzeug von BZi Studio.
 
-> **Status: Beta (v0.5.0).** Leitplanken und Abo-Anbindung sind automatisch getestet, der Betrieb mit zwei Bots in echtem Discord noch nicht. Bitte erst in einem eigenen Test-Server ausprobieren.
+> **Status: Beta (v0.5.1).** Leitplanken und Abo-Anbindung sind automatisch getestet, der Betrieb mit zwei Bots in echtem Discord noch nicht. Bitte erst in einem eigenen Test-Server ausprobieren.
 
 Gedacht für eine Runde aus zwei Menschen und zwei KIs. Jede Person betreibt **einen eigenen Bot** auf dem eigenen Rechner, mit eigenem API-Key **oder eigenem Claude-Abo**. Gleicher Code, eigene `config.yaml`.
 
@@ -82,22 +82,17 @@ Die Befehlsgruppe heißt wie dein Bot, also z. B. `/nova …` und `/kai …`. So
 
 Alles außer `stopp` nur für den Besitzer. Es gelten dieselben Prüfungen und Grenzen wie im Konfigurator. Was per Chat änderbar ist, legst du im Konfigurator unter „Chat-Rechte“ fest. Wurde der Bot ohne `applications.commands` eingeladen, einfach mit dem neuen Einladungslink nochmal einladen.
 
-## Wissen: MediaVault und lokale Ordner (nur Abo-Variante)
+## Wissen aus lokalen Ordnern (nur Abo-Variante)
 
-Der Bot kann bei Fragen nachschlagen – **nur lesend**, aus zwei Quellen, die du einzeln einschaltest. Alles im Konfigurator unter **Wissen**, ohne Dateien von Hand zu bearbeiten. Wichtig: Alles, was der Bot lesen kann, kann er im Kanal auch erzählen.
+Der Bot kann in Ordnern nachschlagen, die du freigibst – **nur lesend**. Alles im Konfigurator unter **Wissen**, ohne Dateien von Hand zu bearbeiten. Wichtig: Alles, was der Bot lesen kann, kann er im Kanal auch erzählen.
 
-**Lokale Ordner**
-1. Konfigurator → **Wissen** → „Lokale Ordner“ einschalten → **Ordner wählen …** (öffnet den Windows-Dialog; mehrere Ordner möglich). **Speichern.**
+1. Konfigurator → **Wissen** → „Lokale Ordner“ einschalten → **Ordner wählen …** (mehrere Ordner möglich). **Speichern.**
 2. **Wissen prüfen** zeigt, ob die Ordner da sind und wie viele Dateien lesbar sind.
 3. Gelesen werden nur Textdateien (`.md`, `.txt`, `.csv`, `.json`, `.yaml`, `.html` …, unter „Erweitert“ änderbar) bis 200 KB. Nie gelesen: versteckte Ordner (`.git`, `.obsidian` …), `.env`, Schlüssel-, Passwort- und Token-Dateien, alles außerhalb der gewählten Ordner. Lieber einen eigenen Wissensordner wählen statt ganz `C:\` oder „Dokumente“.
 
-**MediaVault**
-1. In MediaVault unter *Mein Konto → KI-Zugang* einen **eigenen Schlüssel nur mit Leserechten** anlegen – und nur für die Projekte, die in die Runde dürfen.
-2. Konfigurator → **Wissen** → MediaVault einschalten. Die Adresse wird aus einer vorhandenen MediaVault-Chat-Brücke vorgeschlagen (nur die Adresse, nie deren Schlüssel). **Speichern.**
-3. Schlüssel ins Feld `MEDIAVAULT_KEY` einfügen → **Setzen** → **Wissen prüfen**.
-4. Optional die erlaubten Lese-Werkzeuge anpassen. Schreibende Werkzeuge stehen gar nicht zur Auswahl und sind immer gesperrt, ebenso Terminal, Dateizugriff von Claude Code selbst und Internet.
+Technik: Pro Antwort erzeugt der Bot eine temporäre MCP-Konfiguration für den mitgelieferten Lese-Server `wissen_ordner.py`, startet `claude -p` mit genau diesen Werkzeugen und löscht die Datei danach. An Claude Code werden keine Schlüssel oder Tokens aus der Umgebung weitergegeben. Antworten mit Nachschlagen dauern länger (10–30 s) und verbrauchen mehr Abo-Kontingent.
 
-Technik: Pro Antwort erzeugt der Bot eine temporäre MCP-Konfiguration (MediaVault per HTTP mit deinem Schlüssel, Ordner über den mitgelieferten Lese-Server `wissen_ordner.py`), startet `claude -p` mit genau diesen Werkzeugen und löscht die Datei danach. An Claude Code werden keine Schlüssel oder Tokens aus der Umgebung weitergegeben. Antworten mit Nachschlagen dauern länger (10–30 s) und verbrauchen mehr Abo-Kontingent. „Vollständiger Test“ macht eine echte Wissens-Abfrage.
+Der Konfigurator sucht nichts automatisch auf deinem Rechner – alle Angaben trägst du selbst ein. (Unter *Wissen → Erweitert* gibt es zusätzlich eine Anbindung an einen eigenen MediaVault-Server; die ist nur für dessen Betreiber gedacht.)
 
 ## Varianten und Updates
 
@@ -110,7 +105,7 @@ Technik: Pro Antwort erzeugt der Bot eine temporäre MCP-Konfiguration (MediaVau
 
 **Hinweis zum Windows-Programm:** Die exe ist nicht digital signiert. Windows SmartScreen zeigt beim ersten Start „Der Computer wurde durch Windows geschützt“ → **Weitere Informationen** → **Trotzdem ausführen**. Manche Virenscanner melden mit PyInstaller gebaute Programme fälschlich. Wer das nicht möchte, nimmt die Python-Variante – gleicher Funktionsumfang, Quellcode offen. Für die Abo-Variante muss in beiden Fällen Claude Code installiert sein.
 
-**Updates** (Konfigurator → **Updates**): *manuell* (nur per Knopf), *hinweis* (beim Start prüfen und anzeigen, Standard) oder *automatisch* (Bot und Konfigurator installieren beim Start selbst und starten neu). Geladen wird nur aus dem offiziellen Release-Repo, die SHA-256-Prüfsumme wird geprüft. `config.yaml`, `.env` und alle Einstellungen bleiben unangetastet; der alte Stand landet in `.update-sicherung\` und lässt sich per Knopf **Vorige Version** zurückholen. Vor dem Update den Bot beenden. In einem Ordner mit `.git` (Entwicklung) wird nie automatisch installiert.
+**Updates** (Konfigurator → **Updates**): *manuell* (nur per Knopf, Standard – kein Online-Check beim Start), *hinweis* (beim Start prüfen und anzeigen) oder *automatisch* (Bot und Konfigurator installieren beim Start selbst und starten neu). Geladen wird nur aus dem offiziellen Release-Repo, die SHA-256-Prüfsumme wird geprüft. `config.yaml`, `.env` und alle Einstellungen bleiben unangetastet; der alte Stand landet in `.update-sicherung\` und lässt sich per Knopf **Vorige Version** zurückholen. Vor dem Update den Bot beenden. In einem Ordner mit `.git` (Entwicklung) wird nie automatisch installiert.
 
 > Von v0.4.0 oder älter einmalig von Hand umsteigen: neues Paket entpacken, `config.yaml`, `.env` und ggf. `config.*.json` aus dem alten Ordner hineinkopieren. Ab v0.5.0 geht es über den Knopf.
 
@@ -189,7 +184,7 @@ Werte aus `!set` landen in `config.overrides.json` und überleben einen Neustart
 - `slash.py` – Slash-Befehle und Panel
 - `checks.py` + `pruefen.py`/`pruefen.bat` – Selbsttest (auch im Konfigurator)
 - `voice_notifier.py` – Voice-Join-Melder, eigenständig und ohne KI
-- `knowledge.py` – Wissensquellen (MediaVault, lokale Ordner; nur lesend) für die Abo-Variante
+- `knowledge.py` – Wissensquellen (lokale Ordner, optional eigener MediaVault; nur lesend) für die Abo-Variante
 - `wissen_ordner.py` – Lese-Server für lokale Wissensordner (MCP, ohne Zusatzpakete)
 - `updater.py` + `version.py` – Updates aus dem Release-Repo (Prüfsumme, Sicherung, Zurücksetzen)
 - `quorumbot.py` – Einstieg der Windows-exe; `tools/build_exe.py` baut sie (PyInstaller, nur unter Windows)

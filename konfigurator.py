@@ -152,15 +152,7 @@ class Store:
             budget = None
         ov = {k: (str(v) if FIELDS.get(k, {}).get("type") == "id" else v) for k, v in self.overrides().items()}
         errors, warnings = check_consistency(self._getter(data))
-        import knowledge
-        bridge = knowledge.bridge_url()
-        if bridge and not values.get("knowledge.mediavault.url"):
-            values["knowledge.mediavault.url"] = bridge      # Vorschlag aus der MediaVault-Brücke (nur Adresse)
-        sections = []
-        for t, fs in SECTIONS:
-            fs = [dict(f, suggest=[bridge], help=f["help"] + " Gefunden in deiner MediaVault-Chat-Brücke: " + bridge)
-                  if f["key"] == "knowledge.mediavault.url" and bridge else f for f in fs]
-            sections.append({"title": t, "fields": fs})
+        sections = [{"title": t, "fields": fs} for t, fs in SECTIONS]   # nichts wird automatisch gesucht
         return {
             "sections": sections,
             "values": values, "overrides": ov, "secrets": secrets,
@@ -535,7 +527,7 @@ def main():
     from version import frozen
     store = Store(cfg_path)
     import updater
-    mode = flat_get(load_config(cfg_path), "update.mode") or FIELDS["update.mode"]["default"]
+    mode = flat_get(load_config(cfg_path), "update.mode") or FIELDS["update.mode"]["default"]   # Standard: manuell
     if updater.auto_update(mode, "konfigurator", cfg_path):
         sys.exit(updater.RESTART_CODE)
 

@@ -94,18 +94,17 @@ Alle fünf Punkte erfüllt: Die Runde ist einsatzbereit.
 
 ## Optional: Wissen (nur Abo-Variante)
 
-Der Bot kann in **lokalen Ordnern** und/oder deinem **MediaVault** nachschlagen – nur lesend.
+Der Bot kann in **lokalen Ordnern** nachschlagen – nur lesend.
 
-1. Konfigurator → Bereich **Wissen**.
-2. Ordner: „Lokale Ordner“ einschalten → **Ordner wählen …** → Ordner aussuchen → **Speichern**. Am besten einen eigenen Wissensordner nehmen, nicht ganz „Dokumente“.
-3. MediaVault: in MediaVault einen Schlüssel **nur mit Leserechten** anlegen, im Konfigurator MediaVault einschalten, Adresse prüfen, **Speichern**, Schlüssel bei `MEDIAVAULT_KEY` einfügen → **Setzen**.
-4. **Wissen prüfen** – alles grün? Dann Bot neu starten.
+1. Konfigurator → Bereich **Wissen** → „Lokale Ordner nutzen“ einschalten.
+2. **Ordner wählen …** → Ordner aussuchen → **Speichern**. Am besten einen eigenen Wissensordner nehmen, nicht ganz „Dokumente“.
+3. **Wissen prüfen** – alles grün? Dann Bot neu starten.
 
 > Alles, was der Bot lesen kann, kann er im Kanal auch erzählen. Versteckte Ordner, `.env`, Schlüssel- und Passwortdateien liest er nie.
 
 ## Updates
 
-Konfigurator → **Updates** → **Nach Updates suchen** → **installieren**. Vorher den Bot beenden. Deine Einstellungen und Schlüssel bleiben erhalten, der Konfigurator startet danach neu. Bei Problemen: **Vorige Version**. Unter „Nach Updates suchen“ lässt sich einstellen, ob nur per Knopf, mit Hinweis beim Start (Standard) oder automatisch aktualisiert wird.
+Konfigurator → **Updates** → **Nach Updates suchen** → **installieren**. Vorher den Bot beenden. Deine Einstellungen und Schlüssel bleiben erhalten, der Konfigurator startet danach neu. Bei Problemen: **Vorige Version**. Unter „Nach Updates suchen“ lässt sich einstellen, ob nur per Knopf (Standard), mit Hinweis beim Start oder automatisch aktualisiert wird.
 
 ## Optional: Profilbild
 

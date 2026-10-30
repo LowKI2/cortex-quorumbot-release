@@ -124,15 +124,5 @@ def prompt_rules(cfg) -> list[str]:
     ]
 
 
-def bridge_url() -> str | None:
-    """Adresse aus einer vorhandenen MediaVault-Chat-Brücke (~/.mediavault/mv-chat.json) – nur die Adresse."""
-    p = Path.home() / ".mediavault" / "mv-chat.json"
-    try:
-        url = (json.loads(p.read_text(encoding="utf-8")).get("url") or "").strip().rstrip("/")
-    except (OSError, ValueError, AttributeError):
-        return None
-    return url[:-4] if url.endswith("/mcp") else (url or None)
-
-
 def looks_like_write(tool: str) -> bool:
     return tool not in READ_TOOLS and any(h in tool for h in WRITE_HINTS)

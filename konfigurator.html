@@ -493,7 +493,7 @@ function renderSections(){
     }).join("");
     const ic = ICONS[sec.title] || "shield";
     const kn = sec.title === "Wissen";
-    const extra = kn ? `<div class="kn-extra" data-show='${esc(JSON.stringify({"knowledge.mediavault.enabled":[true]}))}'>
+    const extra = kn ? `<div class="kn-extra" data-show='${esc(JSON.stringify({"features.mediavault":[true],"knowledge.mediavault.enabled":[true]}))}'>
         <div class="f"><label><span class="mono">MEDIAVAULT_KEY</span> <span class="tag ${S.secrets.MEDIAVAULT_KEY?"ok":"bad"}">${S.secrets.MEDIAVAULT_KEY?"gesetzt":S.secrets.MEDIAVAULT_KEY===undefined?"erst speichern":"leer"}</span></label>
           <div class="secret"><input type="password" autocomplete="off" spellcheck="false" placeholder="Schlüssel mit Leserechten (mv_…) einfügen" data-secret="MEDIAVAULT_KEY" ${S.secrets.MEDIAVAULT_KEY===undefined?"disabled":""}>
           <button class="small" data-setsecret="MEDIAVAULT_KEY" ${S.secrets.MEDIAVAULT_KEY===undefined?"disabled":""}>Setzen</button></div>
@@ -501,7 +501,7 @@ function renderSections(){
         </div>
         <div class="kn-extra" data-show='${esc(JSON.stringify({"knowledge.folders.enabled":[true]}))}'>
           <div class="kn-actions"><button data-pickfolder="1">${icon("book")}Ordner wählen …</button><span class="help">öffnet den Ordner-Dialog von Windows und fügt den Ordner der Liste hinzu</span></div></div>
-        <div class="kn-extra"><div class="kn-actions"><button data-kncheck="1">${icon("check")}Wissen prüfen</button><span class="help">MediaVault: Adresse, Schlüssel, Werkzeuge · Ordner: vorhanden, Anzahl lesbarer Dateien – ohne Modell-Anfrage. „Vollständiger Test“ fragt zusätzlich echt ab.</span></div>
+        <div class="kn-extra"><div class="kn-actions"><button data-kncheck="1">${icon("check")}Wissen prüfen</button><span class="help">Prüft die eingeschalteten Quellen (Ordner vorhanden, Anzahl lesbarer Dateien …) – ohne Modell-Anfrage. „Vollständiger Test“ fragt zusätzlich echt ab.</span></div>
         <div class="kn-out"></div></div>` : "";
     const extra2 = sec.title === "Bot & Personen" ? `<div class="kn-extra"><div class="f"><label>Profilbild des Bots in Discord</label>
         <div class="av"><span class="ph" id="av-img">${icon("image")}</span>
@@ -641,7 +641,7 @@ async function load(){
   S = await api("/api/state");
   renderHeader(); renderSections(); renderSecrets(); renderNotes();
   dirty = false; msg("");
-  if(!UP && S.values["update.mode"] !== "manuell") checkUpdates(false);
+  if(!UP && ["hinweis","automatisch"].includes(S.values["update.mode"])) checkUpdates(false);
 }
 
 /* ---------- Ereignisse ---------- */

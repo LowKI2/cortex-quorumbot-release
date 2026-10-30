@@ -122,7 +122,7 @@ def test_sse_antwort_wird_gelesen():
 
 
 # --- Konfigurator --------------------------------------------------------
-def test_konfigurator_schluessel_und_adresse_aus_bruecke(tmp_path, monkeypatch):
+def test_konfigurator_sucht_nichts_automatisch(tmp_path, monkeypatch):
     from konfigurator import Store
     home = tmp_path / "home"
     (home / ".mediavault").mkdir(parents=True)
@@ -130,10 +130,10 @@ def test_konfigurator_schluessel_und_adresse_aus_bruecke(tmp_path, monkeypatch):
     monkeypatch.setattr(Path, "home", lambda: home)
     s = Store(tmp_path / "config.yaml")
     st = s.state()
-    assert st["values"]["knowledge.mediavault.url"] == URL
-    assert "mv_bruecke" not in json.dumps(st)                   # Schlüssel der Brücke wird nie übernommen
+    assert not st["values"]["knowledge.mediavault.url"] and URL not in json.dumps(st) and "mv_bruecke" not in json.dumps(st)
+    assert st["values"]["features.mediavault"] is False and st["values"]["update.mode"] == "manuell"
     assert "MEDIAVAULT_KEY" not in st["secrets"]
-    s.save({"knowledge.mediavault.enabled": True, "knowledge.mediavault.url": URL}, draft=True)
-    assert "MEDIAVAULT_KEY" in s.state()["secrets"]
+    s.save({"features.mediavault": True, "knowledge.mediavault.enabled": True, "knowledge.mediavault.url": URL}, draft=True)
+    assert "MEDIAVAULT_KEY" in s.state()["secrets"] and s.state()["values"]["features.mediavault"] is True
     assert s.set_secret("MEDIAVAULT_KEY", "mv_bot")["ok"]
     assert s.state()["secrets"]["MEDIAVAULT_KEY"] is True
