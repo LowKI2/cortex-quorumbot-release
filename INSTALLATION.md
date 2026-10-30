@@ -64,7 +64,14 @@ Wähle, womit dein Bot denkt: **Anthropic-API**, **Claude-Abo** oder **Lokal / a
 ### Schritt 5 – Namen und Persönlichkeit
 Namen eintragen und die Persönlichkeit frei beschreiben. Die Leitplanken gelten unabhängig davon.
 
-### Schritt 6 – Test
+### Schritt 6 – Sprache (optional, Beta)
+Nur wenn der Bot im Sprachraum sprechen und zuhören soll – geht auch später. Sonst „Nur Text“ und weiter.
+1. **FFmpeg** installieren: Eingabeaufforderung öffnen, `winget install Gyan.FFmpeg`, danach den Konfigurator schließen und neu starten.
+2. **Spracherkennung:** Groq-Konto anlegen, unter <https://console.groq.com/keys> einen Key erstellen, im Assistenten setzen.
+3. **Stimme:** Im <https://portal.azure.com> „Speech-Dienst“ suchen → Erstellen → Region **Germany West Central**, Tarif **Free F0** → unter **Schlüssel und Endpunkt** „Schlüssel 1“ kopieren und setzen. (Alternativ Piper lokal, ElevenLabs oder OpenAI.)
+4. **Hörprobe** klicken – die Stimme ist direkt zu hören.
+
+### Schritt 7 – Test
 **Test starten.** Geprüft werden:
 
 | Prüfung | Was sie bedeutet |
@@ -79,6 +86,8 @@ Namen eintragen und die Persönlichkeit frei beschreiben. Die Leitplanken gelten
 | Deine User-ID / Partner-Bot | IDs zeigen auf die richtigen Konten |
 | API-Key / Claude Code / Modell-Server | Modellzugang vorhanden |
 | Testanfrage | echte Antwort vom Modell (kostet minimal bzw. etwas Abo-Kontingent) |
+| Sprach-Pakete, Opus, FFmpeg, Keys | nur wenn Sprache aktiv |
+| Rundlauf Stimme → Erkennung | Bot spricht einen Satz, die Erkennung muss ihn verstehen |
 
 Bei jedem Fehler steht direkt darunter, was zu tun ist. Wenn unten **„Startklar“** steht: **Bot jetzt starten**.
 
@@ -93,6 +102,14 @@ Bei jedem Fehler steht direkt darunter, was zu tun ist. Wenn unten **„Startkla
 5. Nochmal `!dialog 10 Testthema`, nach zwei Antworten `!stopp` schreiben. → Beide hören auf.
 
 Alle fünf Punkte erfüllt: Die Runde ist einsatzbereit.
+
+## Optional: Sprache testen (Beta)
+
+1. In einen Sprachraum gehen. → Dein Bot kommt nach (grüner Rand, wenn er spricht).
+2. „Cortex, hörst du mich?“ sagen (dein Bot-Name). → Im Textkanal erscheint „🎙️ Dein Name: …“ und der Bot antwortet gesprochen.
+3. Ohne Rufnamen etwas sagen. → Text erscheint, der Bot bleibt still.
+4. Während er spricht, selbst reden. → Er hört auf.
+5. Am Handy im Textkanal eine Sprachnachricht schicken. → Er antwortet.
 
 ## Optional: Wissen
 
@@ -148,6 +165,9 @@ Der Bot meldet im Textkanal, wenn jemand einen Sprachraum betritt – ohne KI, k
 | Abo: „claude -p fehlgeschlagen“ | In der Eingabeaufforderung `claude` starten und neu einloggen. Kontingent prüfen. |
 | Voice-Melder meldet nichts | Ist er an? Stimmt die Reihenfolge (erst Sprachraum, dann Textkanal)? „Vollständiger Test“ zeigt, ob der Bot beide Kanäle sieht. Meldet ein anderer Bot schon? |
 | Meldungen doppelt | Der Melder ist in zwei Bots aktiv – in einem ausschalten. |
+| Bot spricht nicht | FFmpeg installiert? Konfigurator → „Vollständiger Test“. Ist „Antworten im Sprachraum sprechen“ an? |
+| Bot reagiert nicht auf Sprache | Rufnamen sagen. Im Textkanal prüfen, wie dein Satz erkannt wurde – abweichende Schreibweise unter „Weitere Rufnamen“ eintragen. Klappt Live nicht: Sprachnachricht schicken. |
+| Bot antwortet sich selbst | Kopfhörer benutzen oder „Unterbrechen“ ausschalten. |
 | Token versehentlich geteilt | Sofort im Developer Portal **Reset Token**, neuen Token im Konfigurator setzen, Bot neu starten. |
 
 ## ⚠️ Sicherheit

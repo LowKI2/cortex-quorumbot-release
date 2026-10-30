@@ -25,7 +25,8 @@ def main():
            "--name", "CortexQuorumBot", "--distpath", str(out), "--workpath", str(work), "--specpath", str(work),
            "--add-data", f"{ROOT / 'konfigurator.html'};.",
            "--add-data", f"{ROOT / 'assets'};assets",
-           "--collect-submodules", "discord", "--collect-all", "webview",
+           "--collect-submodules", "discord", "--collect-data", "discord",   # inkl. Opus-DLL für Sprache
+           "--collect-all", "webview", "--collect-all", "nacl", "--collect-all", "davey",
            "--hidden-import", "truststore",
            str(ROOT / "quorumbot.py")]
     icon = ROOT / "tools" / "icon.ico"

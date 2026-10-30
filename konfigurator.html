@@ -258,6 +258,10 @@ details[open] > summary::before{content:"–"}
 .kn-out:empty{display:none}
 .kn-actions .help,.voice-actions .help{color:var(--text-2);font-size:var(--text-xs)}
 
+.voice-actions{display:flex;gap:var(--space-3);align-items:center;flex-wrap:wrap;margin-top:var(--space-5);padding-top:var(--space-4);border-top:1px solid var(--line)}
+.voice-actions audio{height:34px;max-width:100%}
+.sample-player.hidden{display:none}
+
 /* ---------- Assistent ---------- */
 .wiz-back{position:fixed;inset:0;z-index:20;background:color-mix(in srgb,var(--bg-0) 70%,transparent);backdrop-filter:blur(6px);display:grid;place-items:center;padding:16px}
 .wiz-back.hidden{display:none}
@@ -323,6 +327,8 @@ ol.howto code,.wiz-b code{font-family:var(--font-mono);font-size:var(--text-xs);
   <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 20a2 2 0 0 0 4 0"/></symbol>
   <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></symbol>
   <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-9 9"/></symbol>
+  <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></symbol>
+  <symbol id="i-wave" viewBox="0 0 24 24"><path d="M3 12h2M7 8v8M11 5v14M15 9v6M19 7v10M21 12h0"/></symbol>
   <symbol id="i-undo" viewBox="0 0 24 24"><path d="M4 9h11a5 5 0 0 1 0 10H8"/><path d="M8 5 4 9l4 4"/></symbol>
 </svg>
 
@@ -404,7 +410,7 @@ ol.howto code,.wiz-b code{font-family:var(--font-mono);font-size:var(--text-xs);
 </div>
 
 <script>
-const ICONS = {"Bot & Personen":"bot","Discord":"hash","Modell":"cpu","Persönlichkeit & Kontext":"user","Leitplanken":"shield","Chat-Rechte":"lock","Voice-Melder":"bell","Wissen":"book","Updates":"download"};
+const ICONS = {"Bot & Personen":"bot","Discord":"hash","Modell":"cpu","Persönlichkeit & Kontext":"user","Leitplanken":"shield","Chat-Rechte":"lock","Voice-Melder":"bell","Wissen":"book","Updates":"download","Sprache (Beta)":"mic","Spracherkennung & Stimme":"wave"};
 let S = null, dirty = false;
 const $ = (s, el=document) => el.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -460,7 +466,7 @@ function fieldInput(f, v){
   const id = "f_"+f.key.replace(/\./g,"_");
   switch(f.type){
     case "textarea": return `<textarea id="${id}" data-key="${f.key}">${esc(v)}</textarea>`;
-    case "select": return `<select id="${id}" data-key="${f.key}">${f.options.map(o=>`<option ${o===v?"selected":""}>${esc(o)}</option>`).join("")}</select>`;
+    case "select": return `<select id="${id}" data-key="${f.key}">${f.options.map((o,i)=>`<option value="${esc(o)}" ${o===v?"selected":""}>${esc((f.labels||[])[i]||o)}</option>`).join("")}</select>`;
     case "bool": return `<label class="switch"><input type="checkbox" id="${id}" data-key="${f.key}" ${v?"checked":""}><span>${v?"an":"aus"}</span></label>`;
     case "int": case "float": return `<input type="number" id="${id}" data-key="${f.key}" value="${esc(v)}" ${f.min!==undefined?`min="${f.min}"`:""} ${f.max!==undefined?`max="${f.max}"`:""} step="${f.type==="int"?1:"any"}">`;
     case "idlist": return `<textarea class="ids" id="${id}" data-key="${f.key}" style="min-height:64px" placeholder="eine ID pro Zeile">${esc((v||[]).join("\n"))}</textarea>`;
@@ -518,7 +524,8 @@ function renderSections(){
           <button id="av-pick">${icon("image")}Bild wählen …</button>
           <button class="ghost" id="av-reset"><img src="/assets/icon-256.png" alt="" style="width:18px;height:18px;border-radius:50%">Cortex-Logo</button></div>
         <span class="help">Wird sofort bei Discord gesetzt (PNG, JPG, GIF, WebP, max. 8 MB, am besten quadratisch). Geht erst, wenn der Discord-Token gesetzt ist. Discord erlaubt nur wenige Wechsel kurz hintereinander.</span></div></div>`
-      : sec.title === "Updates" ? `<div class="kn-extra"><div class="up-box" id="up-box"></div></div>` : "";
+      : sec.title === "Updates" ? `<div class="kn-extra"><div class="up-box" id="up-box"></div></div>`
+      : sec.title === "Spracherkennung & Stimme" ? `<div class="voice-actions" data-show='${esc(JSON.stringify({"voice.enabled":[true]}))}'><button data-sample="1">${icon("play")}Hörprobe</button><span class="help">spielt die gespeicherte Stimme hier ab · „Vollständiger Test“ prüft zusätzlich Stimme → Erkennung</span><audio class="sample-player hidden" controls></audio></div>` : "";
     card.innerHTML = `<div class="card-h">${icon(ic)}<h2>${esc(sec.title)}</h2>${nOv?`<span class="tag warn" style="margin-left:auto">${nOv} per Chat</span>`:""}</div><div class="grid">${block(basic)}</div>${extra}${extra2}`
       + (adv.length?`<details><summary class="label">Erweitert</summary><div class="grid" style="margin-top:var(--space-4)">${block(adv)}</div></details>`:"");
     $("#main").appendChild(card);
@@ -634,6 +641,11 @@ function applyShowIf(){
     const cond = JSON.parse(w.dataset.show);
     w.classList.toggle("hidden", !Object.entries(cond).every(([k,vals]) => vals.includes(currentValue(k))));
   });
+  document.querySelectorAll("main .card.gen").forEach(c => {
+    const any = [...c.querySelectorAll(".f")].some(f => !f.classList.contains("hidden"));
+    c.classList.toggle("hidden", !any);
+    const nav = document.querySelector(`nav.side a[href="#${c.id}"]`); if(nav) nav.classList.toggle("hidden", !any);
+  });
 }
 
 /* aktiven Abschnitt in der Seitenleiste markieren */
@@ -722,6 +734,17 @@ $("#invite").onclick = async () => {
 };
 
 $("#check").onclick = () => fullCheck();
+async function playSample(btn, player){
+  if(dirty) return msg("Erst speichern, dann Hörprobe.","warn");
+  btn.disabled = true; msg("Stimme wird erzeugt …","info");
+  const r = await api("/api/voice/sample",{});
+  btn.disabled = false;
+  if(!r.ok) return msg("Hörprobe fehlgeschlagen: "+r.errors.join(" "),"err");
+  player.src = `data:${r.mime};base64,${r.audio}`; player.classList.remove("hidden");
+  try{ await player.play(); }catch(e){}
+  msg("Hörprobe läuft.","ok");
+}
+document.addEventListener("click", e => { const b = e.target.closest("[data-sample]"); if(b && !b.closest("#wiz")) playSample(b, b.parentElement.querySelector("audio")); });
 $("#botbtn").onclick = async () => {
   const bb = $("#botbtn"), run = !!bb.dataset.run;
   if(!run && dirty) return msg("Erst speichern, dann starten.","warn");
@@ -771,7 +794,7 @@ window.addEventListener("beforeunload", e => { if(dirty){ e.preventDefault(); e.
 setInterval(async () => { if(!dirty){ const s = await api("/api/state"); S.status=s.status; S.budget=s.budget; renderHeader(); } }, 15000);
 /* ================= Einrichtungsassistent ================= */
 const W = {step:0, vals:{}};
-const WIZ_STEPS = ["Start","Discord-Bot","Modell","Einladen & IDs","Persönlichkeit","Test"];
+const WIZ_STEPS = ["Start","Discord-Bot","Modell","Einladen & IDs","Persönlichkeit","Sprache","Test"];
 const MODES = {
   anthropic:{t:"Anthropic-API", d:"Mit API-Key. Zahlung pro Nutzung, schnellste Antworten.", tag:"API-Key nötig"},
   claude_code:{t:"Claude-Abo", d:"Über Claude Code mit deinem Pro/Max-Abo. Kein Key, zählt aufs Kontingent.", tag:"Claude Code nötig"},
@@ -866,6 +889,34 @@ function wizRender(){
       </div>`;
   }
   if(W.step === 5){
+    const on = !!v("voice.enabled");
+    const stt = v("stt.provider") || "groq", tts = v("tts.provider") || "azure";
+    const sttKey = {groq:"GROQ_API_KEY",openai:"OPENAI_API_KEY",deepgram:"DEEPGRAM_API_KEY"}[stt];
+    const ttsKey = {azure:"AZURE_SPEECH_KEY",openai:"OPENAI_API_KEY",elevenlabs:"ELEVENLABS_API_KEY"}[tts];
+    const sel = (key, opts, labels) => `<select data-w="${key}">${opts.map((o,i)=>`<option value="${o}" ${v(key)===o||(!v(key)&&i===0)?"selected":""}>${labels[i]}</option>`).join("")}</select>`;
+    B.innerHTML = `<h3>Sprache <span class="tag info" style="vertical-align:middle">optional · Beta</span></h3>
+      <p>Der Bot kommt in deinen Sprachraum, spricht seine Antworten und hört dir zu (nur dir). Kannst du auch später einschalten.</p>
+      <div class="modes" style="margin-bottom:var(--space-5)">
+        <button class="mode ${!on?"on":""}" data-voice="0"><b>Nur Text</b><span>Bot schreibt im Kanal.</span></button>
+        <button class="mode ${on?"on":""}" data-voice="1"><b>Text + Sprache</b><span>Bot spricht im Sprachraum und versteht dich.</span></button>
+      </div>
+      ${on ? `<ol class="howto">
+        <li><span><b>FFmpeg</b> installieren – Eingabeaufforderung: <code>winget install Gyan.FFmpeg</code>, danach Konfigurator neu starten.</span></li>
+        <li><span><b>Spracherkennung</b> wählen und Key setzen. Empfehlung: Groq – <a href="https://console.groq.com/keys" target="_blank" rel="noopener">console.groq.com/keys</a>, kostet Cent-Beträge.</span></li>
+        <li><span><b>Stimme</b> wählen. Empfehlung: Azure – im <a href="https://portal.azure.com" target="_blank" rel="noopener">Azure-Portal</a> einen „Speech“-Dienst anlegen (Region Germany West Central, Tarif F0 = gratis), unter „Schlüssel und Endpunkt“ Key 1 kopieren.</span></li>
+        <li><span>Speichern, dann <b>Hörprobe</b>.</span></li></ol>
+      <div class="grid">
+        <div class="f"><label>Spracherkennung</label>${sel("stt.provider",["groq","openai","deepgram","lokal"],["Groq (empfohlen)","OpenAI","Deepgram","Lokal (faster-whisper)"])}</div>
+        <div class="f"><label>Stimme von</label>${sel("tts.provider",["azure","piper","elevenlabs","openai"],["Azure (empfohlen)","Piper (lokal, gratis)","ElevenLabs","OpenAI"])}</div>
+        ${sttKey ? secretBox(sttKey, `Key für Spracherkennung (${sttKey})`) : ""}
+        ${ttsKey && ttsKey !== sttKey ? secretBox(ttsKey, `Key für Stimme (${ttsKey})`) : ""}
+        ${wfield("tts.voice","Stimme",{list:tts==="azure"?["de-DE-KatjaNeural","de-DE-ConradNeural","de-DE-SeraphinaMultilingualNeural","de-DE-FlorianMultilingualNeural"]:tts==="openai"?["alloy","nova","onyx","shimmer"]:[], ph: tts==="elevenlabs"?"Voice-ID":tts==="piper"?"Pfad zur .onnx-Stimme":"leer = Standard"})}
+        ${wfield("voice.text_channel_id","Textkanal für Gesprochenes",{id:true,ph:"leer = euer Runden-Kanal"})}
+      </div>
+      <div class="voice-actions"><button data-wsample="1">${icon("play")}Hörprobe</button><audio class="sample-player hidden" controls></audio></div>
+      <p style="margin-top:var(--space-4)" class="help">Im Sprachraum: einfach reinkommen – der Bot folgt dir. Sprich ihn mit „${esc(v("bot.name")||"Nova")}, …“ an. „Stopp“ beendet. Kopfhörer verhindern, dass er sich selbst hört.</p>` : ""}`;
+  }
+  if(W.step === 6){
     B.innerHTML = `<h3>Test</h3><p>Prüft Discord-Zugang, Rechte, IDs und schickt eine echte Testanfrage an das Modell.</p>
       <p><button class="primary" id="w-run">${icon("play")}Test starten</button></p>
       <div id="w-results"></div>`;
@@ -873,6 +924,10 @@ function wizRender(){
   B.scrollTop = 0;
 }
 
+document.addEventListener("change", async e => {
+  const k = e.target.dataset && e.target.dataset.w;
+  if(k === "stt.provider" || k === "tts.provider"){ await wizSave(); wizRender(); }
+});
 function wizCollect(){
   document.querySelectorAll("#wiz-body [data-w]").forEach(el => { W.vals[el.dataset.w] = el.value; });
 }
@@ -917,7 +972,8 @@ async function wizRunTest(){
   out.innerHTML = resultsHtml(r) + (r.ready ? `<p style="margin-top:var(--space-4)">${S.status && S.status.age<90 ? "Der Bot läuft bereits." : `<button class="primary" id="w-start">${icon("play")}Bot jetzt starten</button> <span class="help">öffnet ein eigenes Fenster – zum Beenden das Fenster schließen. Später einfach <code>start.bat</code> doppelklicken.</span>`}</p>
     <ol class="howto" style="margin-top:var(--space-4)"><li><span>In Discord im Kanal schreiben: <code>@${esc(S.values["bot.name"]||"Bot")} hallo</code> – der Bot antwortet.</span></li>
     <li><span>Läuft der andere Bot auch: <code>!dialog 4 Testthema</code> – beide reden 4 Runden. <code>!stopp</code> beendet.</span></li>
-    <li><span><code>/${esc((S.values["bot.name"]||"bot").toLowerCase().replace(/[^a-z0-9_-]/g,""))} panel</code> öffnet die Einstellungen in Discord.</span></li></ol>` : "");
+    <li><span><code>/${esc((S.values["bot.name"]||"bot").toLowerCase().replace(/[^a-z0-9_-]/g,""))} panel</code> öffnet die Einstellungen in Discord.</span></li>
+    ${S.values["voice.enabled"] ? `<li><span>In einen Sprachraum gehen – der Bot folgt. „${esc(S.values["bot.name"]||"Nova")}, hörst du mich?“ – er antwortet gesprochen.</span></li>` : ""}</ol>` : "");
 }
 
 function wizOpen(step=0){ W.step = step; W.vals = {}; $("#wiz").classList.remove("hidden"); wizRender(); }
@@ -936,6 +992,15 @@ $("#wiz").addEventListener("click", async e => {
     if(t.dataset.mode==="claude_code" && !/^(sonnet|haiku|opus)$/.test(v("llm.model")||"")) W.vals["llm.model"]="sonnet";
     if(t.dataset.mode==="anthropic" && /^(sonnet|haiku|opus)$/.test(v("llm.model")||"")) W.vals["llm.model"]="claude-sonnet-5-5";
     await wizSave(); wizRender(); }
+  if(t.dataset.voice !== undefined){ W.vals["voice.enabled"] = t.dataset.voice === "1"; await wizSave(); wizRender(); return; }
+  if(t.dataset.wsample){
+    if(!(await wizSave())) return;
+    wmsg("Stimme wird erzeugt …","info"); t.disabled = true;
+    const r = await api("/api/voice/sample",{}); t.disabled = false;
+    if(!r.ok) return wmsg(r.errors.join(" "),"err");
+    const pl = t.parentElement.querySelector("audio"); pl.src = `data:${r.mime};base64,${r.audio}`; pl.classList.remove("hidden");
+    try{ await pl.play(); }catch(e){} wmsg("Hörprobe läuft.","ok");
+  }
   if(t.dataset.wsetsecret){
     const inp = document.querySelector(`[data-wsecret="${t.dataset.wsetsecret}"]`);
     if(!inp.value.trim()) return wmsg("Kein Wert eingegeben.","err");

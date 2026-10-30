@@ -8,7 +8,7 @@
 
 **Text- und Sprachbot für Discord** – eine Runde aus Menschen und KI-Bots, mit festen Leitplanken. Ein Werkzeug von BZi Studio.
 
-> **Status: Beta (v0.8.2).** Leitplanken und Abo-Anbindung sind automatisch getestet, der Betrieb mit zwei Bots in echtem Discord noch nicht. Bitte erst in einem eigenen Test-Server ausprobieren.
+> **Status: Beta (v0.9.0), Sprache als Beta-Funktion.** Leitplanken und Abo-Anbindung sind automatisch getestet, der Betrieb mit zwei Bots in echtem Discord noch nicht. Bitte erst in einem eigenen Test-Server ausprobieren.
 
 Gedacht für eine Runde aus zwei Menschen und zwei KIs. Jede Person betreibt **einen eigenen Bot** auf dem eigenen Rechner, mit eigenem API-Key **oder eigenem Claude-Abo**. Gleicher Code, eigene `config.yaml`.
 
@@ -133,6 +133,29 @@ Damit der Kontext (und damit Kosten bzw. Kontingent) nicht immer weiter wächst:
 
 Konfigurator → **Bot & Personen** → **Bild wählen …** setzt das Profilbild des Bots direkt bei Discord (PNG, JPG, GIF, WebP, max. 8 MB). Discord erlaubt nur wenige Wechsel kurz hintereinander. Alternativ wie bisher im Developer Portal unter *Bot → Icon*.
 
+## Sprache (Beta)
+
+Standardmäßig aus. Im Konfigurator unter **Sprache (Beta)** oder im Assistenten (Schritt „Sprache“) einschalten. Dann:
+
+- **Der Bot sitzt im Sprachraum.** Gehst du in einen Sprachraum, kommt er nach – sonst `!beitreten` bzw. `/name beitreten`. Er spricht seine Antworten live, es werden keine Audiodateien gepostet.
+- **Nur gesprochen:** Antworten an dich gibt es dann nur im Sprachraum, nicht zusätzlich als Text (umstellbar: „Gesprochene Antworten zusätzlich als Text“). Der Bot merkt sich das Gesagte trotzdem. Bot-Dialoge laufen immer auch als Text, weil der Partner-Bot nur Text lesen kann.
+- **Er hört nur dir zu.** Der Ton anderer Teilnehmer wird verworfen, bevor er entschlüsselt wird. Ansprache mit Rufnamen: „Cortex, was meinst du?“ – ohne Rufnamen hört er nur mit.
+- **Was du sagst, landet als Text im Kanal** (🎙️ Name: …). So bekommt der andere Bot mit, worum es geht – und es läuft wie jede Nachricht durch Leitplanken, `!reset`, Speichern und Löschen.
+- **Sprachnachrichten** (Mikrofon-Knopf im Textkanal) versteht er auch – praktisch am Handy.
+- **Dialoge:** Standardmäßig wird nur das Fazit gesprochen. Wird jede Runde gesprochen, reicht ein Bot erst weiter, wenn er zu Ende gesprochen hat.
+- **Unterbrechen:** Fängst du an zu reden, hört er auf. „Stopp“ beendet auch per Sprache einen Dialog.
+
+| Zusätzlich nötig | Empfehlung | Kosten |
+|---|---|---|
+| FFmpeg (auch beim Windows-Programm) | `winget install Gyan.FFmpeg`, danach Konfigurator und Bot neu starten | gratis |
+| Spracherkennung | Groq – Key unter console.groq.com/keys | Cent-Beträge |
+| Stimme | Azure Speech, Region Germany West Central, Tarif F0 | 500.000 Zeichen/Monat gratis |
+| Alternativ lokal | Piper (Stimme), faster-whisper (Erkennung, nur Python-Variante) | gratis |
+
+Der **Vollständige Test** prüft Pakete, Opus, FFmpeg und Keys und macht einen Rundlauf: Der Bot spricht einen Satz, die Spracherkennung muss ihn verstehen. Die **Hörprobe** spielt die Stimme direkt im Konfigurator ab.
+
+**Beta heißt:** Der Live-Empfang baut auf Discords Ende-zu-Ende-Verschlüsselung (DAVE) auf und ist in echtem Discord noch nicht erprobt. Wenn Live-Zuhören nicht klappt, gehen Sprachnachrichten immer. Antwortzeit 2–4 s (mit Abo mehr). Kopfhörer verhindern, dass der Bot sich selbst hört.
+
 ## Voice-Join-Melder
 
 Eigenständiges Modul (`voice_notifier.py`), läuft **ohne KI**: Betritt jemand einen überwachten Sprachraum (oder wechselt hinein), postet der Bot in den zugeordneten Textkanal:
@@ -162,6 +185,7 @@ Das Modul ist unabhängig vom Rest des Bots und lässt sich in jeden discord.py-
 | `!set <schlüssel> <wert>` | Einstellung live ändern, z. B. `!set llm.temperature 0.4` |
 | `!unset <schlüssel>` | zurück auf den Wert aus der `config.yaml` |
 | `!reset` | Verlauf zurücksetzen – bei **beiden** Bots, nach Bestätigung durch den anderen Menschen (✅ oder eigenes `!reset`). Je nach Einstellung vorher speichern und Chat löschen |
+| `!beitreten` / `!verlassen` | In deinen Sprachraum kommen / ihn verlassen (Sprache muss aktiv sein) |
 | `!speichern` | Letzten Dialog als Markdown-Datei speichern (ohne KI, kostet nichts) |
 | `!hilfe` | Übersicht |
 
@@ -208,6 +232,9 @@ Werte aus `!set` landen in `config.overrides.json` und überleben einen Neustart
 - `voice_notifier.py` – Voice-Join-Melder, eigenständig und ohne KI
 - `knowledge.py` – Wissensquellen (lokale Ordner, optional eigener MediaVault; nur lesend) für die Abo-Variante
 - `wissen_ordner.py` – Lese-Server für lokale Wissensordner (MCP, ohne Zusatzpakete)
+- `speech.py` – Spracherkennung (Groq, OpenAI, Deepgram, lokal) und Stimme (Azure, Piper, ElevenLabs, OpenAI)
+- `voice.py` – Sprachraum: beitreten, sprechen, zuhören, Sprachnachrichten
+- `voice_receive.py` – Live-Empfang (RTP, Transport- und DAVE-Entschlüsselung, Opus, Sprechpausen)
 - `verlauf.py` – Verlauf zurücksetzen, zusammenfassen und speichern, Dialoge speichern
 - `wissen_github.py` – GitHub-Repos laden und aktuell halten (Zip über die API, kein git nötig)
 - `updater.py` + `version.py` – Updates aus dem Release-Repo (Prüfsumme, Sicherung, Zurücksetzen)
@@ -217,6 +244,5 @@ Werte aus `!set` landen in `config.overrides.json` und überleben einen Neustart
 
 ## Nächste Stufen
 
-1. Vault- und MediaVault-Zugriff als Werkzeuge (nur freigegebene Ordner)
-2. Sprachausgabe im Voicechannel (Piper)
-3. Spracheingabe (faster-whisper)
+1. Sprache aus der Beta holen (Live-Test mit zwei Bots in echtem Discord)
+2. Vault-Zugriff (Obsidian) als weitere Wissensquelle

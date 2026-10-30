@@ -17,6 +17,7 @@ PANEL_BOOLS = [
     ("guardrails.require_mention_from_owner", "Nur bei Erwähnung"),
     ("guardrails.allow_bot_dialog", "Bot-Dialoge"),
     ("guardrails.respond_to_owner", "Antwortet mir"),
+    ("voice.output", "Sprechen"),
 ]
 
 
@@ -121,6 +122,29 @@ def setup_slash(bot):
         bot.guard.stop(i.channel_id)
         await i.response.send_message(f"⏹ Dialog gestoppt von {i.user.display_name}")
 
+    # --- /<bot> beitreten / verlassen ---------------------------------
+    @grp.command(name="beitreten", description="In deinen Sprachraum kommen (Sprache, Beta)")
+    async def beitreten(i: discord.Interaction):
+        if not is_owner(i):
+            return await deny(i)
+        if not bot.voice.enabled:
+            return await i.response.send_message("Sprache ist aus – im Konfigurator unter „Sprache“ einschalten.", ephemeral=True)
+        vs = getattr(i.user, "voice", None)
+        if not vs or not vs.channel:
+            return await i.response.send_message("Geh zuerst in einen Sprachraum.", ephemeral=True)
+        await i.response.defer(ephemeral=True, thinking=True)
+        try:
+            text = await bot.voice.join(vs.channel)
+        except Exception as e:  # noqa: BLE001
+            text = f"Beitreten fehlgeschlagen ({type(e).__name__}: {str(e)[:120]})"
+        await i.followup.send(text, ephemeral=True)
+
+    @grp.command(name="verlassen", description="Sprachraum verlassen")
+    async def verlassen(i: discord.Interaction):
+        if not is_owner(i):
+            return await deny(i)
+        await i.response.send_message(await bot.voice.leave(), ephemeral=True)
+
     # --- /<bot> panel -------------------------------------------------
     @grp.command(name="panel", description="Einstellungen mit Schaltern")
     async def panel(i: discord.Interaction):
@@ -156,6 +180,8 @@ def setup_slash(bot):
             super().__init__(timeout=600)
             allowed = set(cfg.settable())
             for key, label in PANEL_BOOLS:
+                if key.startswith("voice.") and not cfg.get("voice.enabled"):
+                    continue
                 on = bool(cfg.get(key, True))
                 b = discord.ui.Button(label=f"{label}: {'an' if on else 'aus'}",
                                       style=discord.ButtonStyle.success if on else discord.ButtonStyle.secondary,

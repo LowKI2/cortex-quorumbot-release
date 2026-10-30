@@ -26,7 +26,7 @@ def test_befehle_registriert(tmp_path):
         grp = setup_slash(bot)
         assert grp.name == "nova-prime"
         names = sorted(c.name for c in grp.commands)
-        assert names == ["dialog", "panel", "set", "status", "stopp", "zuruecksetzen"]
+        assert names == ["beitreten", "dialog", "panel", "set", "status", "stopp", "verlassen", "zuruecksetzen"]
         dialog = next(c for c in grp.commands if c.name == "dialog")
         runden = next(p for p in dialog.parameters if p.name == "runden")
         assert runden.min_value == 1 and runden.max_value == 30 and not runden.required

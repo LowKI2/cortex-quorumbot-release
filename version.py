@@ -4,7 +4,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-VERSION = "0.8.2"
+VERSION = "0.9.0"
 RELEASE_REPO = "LowKI2/cortex-quorumbot-release"
 ASSET_PYTHON = "CortexQuorumBot.zip"
 ASSET_EXE = "CortexQuorumBot-Windows.zip"

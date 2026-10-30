@@ -438,6 +438,95 @@ def model_request(cfg) -> Result:
     return Result("Testanfrage", "ok", f"{time.time() - t0:.1f} s, {tin + tout} Tokens – „{text.strip()[:140]}“")
 
 
+# --- Sprache ------------------------------------------------------------
+def voice_checks(cfg, env: dict, with_request: bool = True, which=shutil.which) -> list[Result]:
+    if not cfg.get("voice.enabled"):
+        return []
+    import speech
+    out: list[Result] = []
+    missing = []
+    for mod, pkg in (("nacl", "PyNaCl"), ("davey", "davey")):
+        try:
+            importlib.import_module(mod)
+        except ImportError:
+            missing.append(pkg)
+    if missing:
+        out.append(Result("Sprach-Pakete", "fail", "fehlt: " + ", ".join(missing),
+                          "start.bat einmal ausführen oder: pip install -r requirements.txt"))
+    else:
+        out.append(Result("Sprach-Pakete", "ok", "PyNaCl, davey"))
+    try:
+        import discord.opus as opus
+        if not opus.is_loaded():
+            opus._load_default()
+        out.append(Result("Opus", "ok" if opus.is_loaded() else "fail",
+                          "geladen" if opus.is_loaded() else "nicht gefunden",
+                          "" if opus.is_loaded() else "Unter Windows bringt discord.py Opus mit – Pakete neu installieren."))
+    except Exception as e:  # noqa: BLE001
+        out.append(Result("Opus", "fail", type(e).__name__, "Pakete neu installieren."))
+    if which("ffmpeg"):
+        out.append(Result("FFmpeg", "ok", "gefunden"))
+    else:
+        out.append(Result("FFmpeg", "fail", "nicht gefunden – ohne FFmpeg kann der Bot nicht sprechen",
+                          "Eingabeaufforderung: winget install Gyan.FFmpeg – danach Konfigurator und Bot neu starten."))
+
+    stt, tts = cfg.get("stt.provider", "groq"), cfg.get("tts.provider", "azure")
+    for kind, prov, keys, link in (
+        ("Spracherkennung", stt, speech.STT_KEY_ENV, {"groq": "console.groq.com/keys", "openai": "platform.openai.com/api-keys",
+                                                     "deepgram": "console.deepgram.com"}),
+        ("Stimme", tts, speech.TTS_KEY_ENV, {"azure": "portal.azure.com → Speech-Dienst anlegen → Schlüssel und Endpunkt",
+                                            "openai": "platform.openai.com/api-keys", "elevenlabs": "elevenlabs.io → Profil → API Keys"})):
+        if prov in keys:
+            var = keys[prov]
+            out.append(Result(f"{kind}-Key", "ok" if env.get(var) else "fail",
+                              f"{var} {'gesetzt' if env.get(var) else 'fehlt'}",
+                              "" if env.get(var) else f"Key holen: {link.get(prov, '')} – im Konfigurator unter Zugangsdaten setzen."))
+    if stt == "lokal":
+        try:
+            importlib.import_module("faster_whisper")
+            out.append(Result("Spracherkennung", "ok", "faster-whisper installiert"))
+        except ImportError:
+            out.append(Result("Spracherkennung", "fail", "faster-whisper fehlt", "pip install faster-whisper (braucht etwas Rechenleistung)."))
+    if tts == "piper":
+        exe = which(cfg.get("tts.piper_path") or "piper") or (cfg.get("tts.piper_path") if Path(cfg.get("tts.piper_path") or "").exists() else None)
+        voice = cfg.get("tts.voice")
+        ok = bool(exe) and bool(voice) and Path(voice).exists()
+        out.append(Result("Piper", "ok" if ok else "fail", "bereit" if ok else "Programm oder Stimme nicht gefunden",
+                          "" if ok else "Piper installieren und Pfad zur .onnx-Stimme unter „Stimme“ eintragen."))
+
+    if with_request and not any(r.status == "fail" for r in out):
+        out.append(voice_roundtrip(cfg, env))
+    elif with_request:
+        out.append(Result("Rundlauf Stimme → Erkennung", "skip", "übersprungen – erst die Fehler oben beheben"))
+    return out
+
+
+def voice_roundtrip(cfg, env: dict) -> Result:
+    """Bot spricht einen Satz, die Spracherkennung muss ihn verstehen – testet beide Dienste ohne Mikrofon."""
+    import time
+
+    import speech
+    name = cfg.get("bot.name") or "Nova"
+    satz = f"Hallo {name}, das ist ein Funktionstest."
+    t0 = time.time()
+    try:
+        audio = asyncio.run(speech.synthesize(cfg, satz, env))
+        t1 = time.time()
+        mime = "audio/mpeg" if audio.suffix == ".mp3" else "audio/wav"
+        text = asyncio.run(speech.transcribe(cfg, audio.data, env, filename="probe" + audio.suffix, mime=mime))
+    except Exception as e:  # noqa: BLE001
+        return Result("Rundlauf Stimme → Erkennung", "fail", str(e)[:250], "Keys, Stimme und Region prüfen.")
+    t2 = time.time()
+    found, _ = speech.find_wake_word(text, [name])
+    detail = f"Stimme {t1 - t0:.1f} s, Erkennung {t2 - t1:.1f} s – verstanden: „{text[:100]}“"
+    if found:
+        return Result("Rundlauf Stimme → Erkennung", "ok", detail)
+    return Result("Rundlauf Stimme → Erkennung", "warn", detail,
+                  f"Der Rufname „{name}“ wurde anders erkannt – die erkannte Schreibweise unter „Weitere Rufnamen“ eintragen.")
+
+
+
+
 # --- Gesamtablauf -------------------------------------------------------
 def run_all(cfg, env: dict, with_request: bool = True, get=http_get) -> list[Result]:
     from settings_schema import check_consistency
@@ -465,6 +554,8 @@ def run_all(cfg, env: dict, with_request: bool = True, get=http_get) -> list[Res
                               "console.anthropic.com → API Keys → Create Key, im Konfigurator unter Zugangsdaten setzen."))
     else:
         res.append(ollama_check(cfg, get=get))
+
+    res += voice_checks(cfg, env, with_request=with_request)
 
     res += knowledge_checks(cfg, env, with_request=with_request and not any(
         r.status == "fail" and r.name in ("Pakete", "Claude Code") for r in res))

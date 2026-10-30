@@ -124,6 +124,10 @@ class Store:
         names = [flat_get(data, k) or d for k, d in SECRET_KEYS_DEFAULT]
         if flat_get(data, "knowledge.mediavault.enabled") and knowledge.KEY_ENV not in names:
             names.append(knowledge.KEY_ENV)
+        import speech
+        for n in speech.secret_vars(self._getter(data)):
+            if n not in names:
+                names.append(n)
         if flat_get(data, "knowledge.github.enabled"):
             gh = flat_get(data, "knowledge.github.token_env") or "GITHUB_TOKEN"
             if gh not in names:
@@ -469,6 +473,23 @@ class Store:
             pass
         return {"ok": True}
 
+    def voice_sample(self, text: str | None) -> dict:
+        """Hörprobe mit der gespeicherten Stimme – wird im Browser abgespielt."""
+        import base64
+
+        import speech
+        if not self.cfg_path.exists():
+            return {"ok": False, "errors": ["Erst speichern."]}
+        cfg, env = self._cfg_env()
+        name = cfg.get("bot.name") or "dein Bot"
+        sample = (text or f"Hallo, ich bin {name}. So klinge ich im Sprachraum.")[:300]
+        try:
+            audio = asyncio.run(speech.synthesize(cfg, sample, env))
+        except Exception as e:  # noqa: BLE001
+            return {"ok": False, "errors": [str(e)[:300]]}
+        mime = "audio/mpeg" if audio.suffix == ".mp3" else "audio/wav"
+        return {"ok": True, "mime": mime, "audio": base64.b64encode(audio.data).decode("ascii")}
+
     def start_bot(self) -> dict:
         """Startet den Bot in einem eigenen Fenster (nur wenn er nicht schon läuft)."""
         try:
@@ -551,6 +572,7 @@ def make_handler(store: "Store"):
                 "/api/check": lambda: store.check(bool(body.get("with_request", True))),
                 "/api/bot/start": store.start_bot,
                 "/api/bot/stop": store.stop_bot,
+                "/api/voice/sample": lambda: store.voice_sample(body.get("text")),
                 "/api/knowledge/check": store.knowledge_check,
                 "/api/pick_folder": store.pick_folder,
                 "/api/github/sync": store.github_sync,

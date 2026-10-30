@@ -12,6 +12,9 @@ from guardrails import HARD_MAX_MINUTES, HARD_MAX_ROUNDS, HARD_MIN_COOLDOWN
 PROVIDERS = ["anthropic", "claude_code", "openai"]
 NOT_CC = {"llm.provider": ["anthropic", "openai"]}
 ONLY_CC = {"llm.provider": ["claude_code"]}
+VOICE_ON = {"voice.enabled": [True]}
+STT_PROVIDERS = ["groq", "openai", "deepgram", "lokal"]
+TTS_PROVIDERS = ["azure", "piper", "elevenlabs", "openai"]
 
 # type: text | textarea | int | float | bool | select | id | idlist | list | checklist
 SECTIONS = [
@@ -36,6 +39,7 @@ SECTIONS = [
     ]),
     ("Modell", [
         {"key": "llm.provider", "label": "Anbieter", "type": "select", "options": PROVIDERS, "default": "anthropic",
+         "labels": ["Anthropic-API", "Claude-Abo (Claude Code)", "Lokal / OpenAI-kompatibel"],
          "help": "claude_code = dein Abo über Claude Code (kein API-Key)."},
         {"key": "llm.model", "label": "Modell", "type": "text", "default": "claude-sonnet-5-5",
          "suggest": ["claude-sonnet-5-5", "claude-haiku-5-5", "claude-opus-5-5", "sonnet", "haiku", "opus"]},
@@ -158,6 +162,58 @@ SECTIONS = [
          "show_if": {"voice_notifier.enabled": [True]}, "help": "{name} = Anzeigename, {channel} = Sprachraum (als Link), {channel_name} = Name als Text. Pings werden nie ausgelöst."},
         {"key": "voice_notifier.disabled_guilds", "label": "Server ohne Melder", "type": "idlist", "show_if": {"voice_notifier.enabled": [True]},
          "advanced": True, "help": "Server-IDs, in denen dieser Bot nicht meldet (z. B. weil dort schon ein anderer Bot meldet)."},
+    ]),
+    ("Sprache (Beta)", [
+        {"key": "voice.enabled", "label": "Sprache aktiv", "type": "bool", "default": False,
+         "help": "BETA. Bot betritt Sprachräume, spricht seine Antworten und hört dir zu. Braucht FFmpeg sowie Keys für Spracherkennung und Stimme (Abschnitt unten)."},
+        {"key": "voice.output", "label": "Antworten im Sprachraum sprechen", "type": "bool", "default": True, "show_if": VOICE_ON},
+        {"key": "voice.text_with_speech", "label": "Gesprochene Antworten zusätzlich als Text", "type": "bool", "default": False,
+         "show_if": VOICE_ON, "help": "Aus: Antworten an dich gibt es nur im Sprachraum (der Bot merkt sie sich trotzdem). Bot-Dialoge laufen immer auch als Text – der Partner-Bot kann nur Text lesen."},
+        {"key": "voice.live_input", "label": "Live zuhören (experimentell)", "type": "bool", "default": True, "show_if": VOICE_ON,
+         "help": "Nur deine Stimme wird verarbeitet. Kopfhörer empfohlen."},
+        {"key": "voice.voice_messages", "label": "Sprachnachrichten verstehen", "type": "bool", "default": True, "show_if": VOICE_ON,
+         "help": "Mikrofon-Knopf im Textkanal – funktioniert auch am Handy."},
+        {"key": "voice.follow_owner", "label": "Folgt dir in den Sprachraum", "type": "bool", "default": True, "show_if": VOICE_ON,
+         "help": "Sonst mit !beitreten bzw. /name beitreten holen."},
+        {"key": "voice.require_wake_word", "label": "Nur mit Rufnamen reagieren", "type": "bool", "default": True, "show_if": VOICE_ON,
+         "help": "„Nova, was meinst du?“ – ohne Rufnamen hört er nur mit."},
+        {"key": "voice.dialog_output", "label": "Bot-Dialoge sprechen", "type": "select", "options": ["nur_fazit", "alles", "aus"],
+         "labels": ["Nur das Fazit", "Jede Runde", "Gar nicht"],
+         "default": "nur_fazit", "show_if": VOICE_ON},
+        {"key": "voice.barge_in", "label": "Unterbrechen, wenn du sprichst", "type": "bool", "default": True, "show_if": VOICE_ON},
+        {"key": "voice.post_transcripts", "label": "Gesprochenes als Text in den Kanal", "type": "bool", "default": True, "show_if": VOICE_ON,
+         "help": "Nötig, damit der andere Bot mitbekommt, was du sagst."},
+        {"key": "voice.text_channel_id", "label": "Textkanal für Gesprochenes", "type": "id", "show_if": VOICE_ON,
+         "help": "Leer = erster erlaubter Kanal."},
+        {"key": "voice.channel_ids", "label": "Erlaubte Sprachräume", "type": "idlist", "show_if": VOICE_ON,
+         "help": "Leer = alle."},
+        {"key": "voice.wake_words", "label": "Weitere Rufnamen", "type": "list", "show_if": VOICE_ON,
+         "help": "Der Bot-Name zählt immer. Hilfreich, wenn die Erkennung den Namen anders schreibt."},
+        {"key": "voice.silence_ms", "label": "Sprechpause bis Ende (ms)", "type": "int", "min": 300, "max": 3000,
+         "default": 900, "show_if": VOICE_ON, "advanced": True},
+        {"key": "voice.max_utterance_s", "label": "Max. Länge einer Äußerung (s)", "type": "int", "min": 5, "max": 120,
+         "default": 30, "show_if": VOICE_ON, "advanced": True},
+        {"key": "voice.max_spoken_chars", "label": "Max. gesprochene Zeichen pro Antwort", "type": "int", "min": 100,
+         "max": 3000, "default": 900, "show_if": VOICE_ON, "advanced": True},
+    ]),
+    ("Spracherkennung & Stimme", [
+        {"key": "stt.provider", "label": "Spracherkennung", "type": "select", "options": STT_PROVIDERS, "default": "groq",
+         "labels": ["Groq (empfohlen)", "OpenAI", "Deepgram", "Lokal (faster-whisper)"],
+         "show_if": VOICE_ON, "help": "groq: sehr schnell, Cent-Beträge. lokal: faster-whisper auf diesem Rechner."},
+        {"key": "stt.model", "label": "Erkennungs-Modell", "type": "text", "default": "", "show_if": VOICE_ON,
+         "help": "Leer = Standard des Anbieters.", "advanced": True},
+        {"key": "stt.language", "label": "Sprache", "type": "text", "default": "de", "show_if": VOICE_ON, "advanced": True},
+        {"key": "tts.provider", "label": "Stimme von", "type": "select", "options": TTS_PROVIDERS, "default": "azure",
+         "labels": ["Azure (empfohlen)", "Piper (lokal, gratis)", "ElevenLabs", "OpenAI"],
+         "show_if": VOICE_ON, "help": "azure: natürliche Stimmen, 500.000 Zeichen/Monat frei. piper: lokal, kostenlos."},
+        {"key": "tts.voice", "label": "Stimme", "type": "text", "default": "", "show_if": VOICE_ON,
+         "suggest": ["de-DE-KatjaNeural", "de-DE-ConradNeural", "de-DE-SeraphinaMultilingualNeural", "de-DE-FlorianMultilingualNeural", "alloy", "nova", "onyx"],
+         "help": "Leer = Standard. Azure: z. B. de-DE-KatjaNeural · ElevenLabs: Voice-ID · Piper: Pfad zur .onnx-Datei."},
+        {"key": "tts.speed", "label": "Sprechtempo", "type": "float", "min": 0.5, "max": 2.0, "default": 1.0, "show_if": VOICE_ON},
+        {"key": "tts.azure_region", "label": "Azure-Region", "type": "text", "default": "germanywestcentral",
+         "show_if": {"voice.enabled": [True], "tts.provider": ["azure"]}},
+        {"key": "tts.piper_path", "label": "Pfad zu piper", "type": "text", "default": "piper",
+         "show_if": {"voice.enabled": [True], "tts.provider": ["piper"]}, "advanced": True},
     ]),
     ("Updates", [
         {"key": "update.mode", "label": "Nach Updates suchen", "type": "select", "options": ["manuell", "hinweis", "automatisch"],
@@ -289,4 +345,11 @@ def check_consistency(get) -> tuple[list[str], list[str]]:
             tpl.format(name="x", channel=1, channel_name="x")
         except (KeyError, IndexError, ValueError):
             errors.append("Voice-Melder: Vorlage fehlerhaft – erlaubt sind {name}, {channel}, {channel_name}.")
+    if get("voice.enabled"):
+        if get("voice.live_input") and not (get("voice.text_channel_id") or get("discord.allowed_channel_ids")):
+            warnings.append("Sprache: Kein Textkanal für Gesprochenes – unter Sprache oder Discord einen Kanal eintragen.")
+        if get("tts.provider") == "elevenlabs" and not get("tts.voice"):
+            errors.append("ElevenLabs braucht eine Voice-ID unter „Stimme“.")
+        if get("tts.provider") == "piper" and not get("tts.voice"):
+            errors.append("Piper braucht den Pfad zur .onnx-Stimme unter „Stimme“.")
     return errors, warnings

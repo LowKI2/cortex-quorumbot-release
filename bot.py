@@ -21,6 +21,7 @@ from config import Config
 from guardrails import Budget, Decision, Guard, Incoming
 from llm import LLM
 from prompting import HistMsg, build_messages, build_system
+from voice import VoiceManager, parse_transcript
 from voice_notifier import attach_voice_notifier
 
 log = logging.getLogger("runde")
@@ -33,6 +34,7 @@ HILFE = """**Befehle** (nur für meinen Besitzer)
 `{p}unset <schlüssel>` – zurück auf den Wert aus der config.yaml
 `{p}reset` – Verlauf zurücksetzen (bei beiden Bots; je nach Einstellung vorher zusammenfassen und speichern)
 `{p}speichern` – den letzten Dialog als Datei speichern
+`{p}beitreten` / `{p}verlassen` – in deinen Sprachraum kommen / ihn verlassen (Sprache, Beta)
 `{p}hilfe` – diese Übersicht"""
 
 
@@ -71,6 +73,8 @@ class RundenBot(discord.Client):
         self.reset_requested: dict[int, int] = {}    # Kanal → meine Reset-Anfrage (wartet auf den anderen Menschen)
         self.reset_to_confirm: dict[int, int] = {}   # Kanal → Anfrage des Partners (wartet auf meinen Besitzer)
         self.tree = app_commands.CommandTree(self)
+        self.voice = VoiceManager(self)
+        self.spoken_log: dict[int, list[tuple[int, str]]] = defaultdict(list)   # nur gesprochene Antworten (ohne Text)
         self._synced = False
         attach_voice_notifier(self, self._notifier_config)
 
@@ -137,6 +141,16 @@ class RundenBot(discord.Client):
             log.info("Config neu geladen")
         if message.guild is None:
             return  # keine DMs
+        own = message.author.id == self.user.id
+        spoken = parse_transcript(message.content)
+        if spoken and own:
+            return  # eigene Transkripte wurden schon beim Sprechen verarbeitet
+        if spoken and message.author.id in self.guard.partner_ids():
+            # Der andere Mensch hat gesprochen (über seinen Bot): zählt als Menschen-Nachricht, nicht als Bot-Runde.
+            self.guard.observe(Incoming(message.channel.id, 0, False, spoken[1], False, msg_id=message.id))
+            return
+        if await self.voice.handle_voice_message(message):
+            return
         mentioned = mentioned_ids(message)
         inc = Incoming(
             channel_id=message.channel.id,
@@ -203,6 +217,36 @@ class RundenBot(discord.Client):
             await self.respond(message.channel, d)
 
     # ------------------------------------------------------------------
+    async def handle_owner_text(self, ch, text: str, *, addressed: bool):
+        """Gesprochenes des Besitzers (live oder Sprachnachricht) – gleiche Leitplanken wie Text."""
+        inc = Incoming(ch.id, int(self.cfg.get("bot.owner_id", 0) or 0), False, text, mentions_me=addressed)
+        self.guard.observe(inc)
+        if self.guard.is_stop(text):
+            self.voice.stop_speaking()
+            return
+        d = self.guard.decide(inc)
+        if not d.respond:
+            log.debug("Sprache ignoriert (%s): %s", d.reason, text[:60])
+            return
+        ok, why = self.budget.check()
+        if not ok:
+            await ch.send(f"-# {self.cfg.get('bot.name')} setzt aus: {why}")
+            return
+        self.budget.reserve()
+        async with self.locks[ch.id]:
+            await self.respond(ch, d)
+
+    async def on_voice_state_update(self, member, before, after):
+        await self.voice.on_voice_state_update(member, before, after)
+
+    def _should_speak(self, d: Decision, pass_on: bool) -> bool:
+        if not (self.voice.enabled and self.voice.connected and self.cfg.get("voice.output", True)):
+            return False
+        if d.mode == "owner":
+            return True
+        policy = self.cfg.get("voice.dialog_output", "nur_fazit")
+        return policy == "alles" or (policy == "nur_fazit" and not pass_on)
+
     async def respond(self, ch, d: Decision):
         st = self.guard.state(ch.id)
         try:
@@ -232,7 +276,24 @@ class RundenBot(discord.Client):
         if d.mode in ("dialog_start", "dialog"):
             ende = "" if pass_on else " · Ende"
             parts.append(f"\n-# Runde {d.turn}/{d.limit}{ende}")
-        await ch.send("".join(parts)[:1990])
+        out = "".join(parts)[:1990]
+        if self._should_speak(d, pass_on) and d.mode == "owner" and not self.cfg.get("voice.text_with_speech", False):
+            # Nur sprechen, kein Text im Kanal – für den eigenen Verlauf merken.
+            log_ = self.spoken_log[ch.id]
+            log_.append((discord.utils.time_snowflake(discord.utils.utcnow()), text))
+            del log_[:-20]
+            await self.voice.speak(text)
+            return
+        if self._should_speak(d, pass_on):
+            if pass_on:
+                # Im Dialog erst zu Ende sprechen, dann weiterreichen – sonst reden beide Bots gleichzeitig.
+                await self.voice.speak(text)
+                await ch.send(out)
+            else:
+                await ch.send(out)
+                asyncio.create_task(self.voice.speak(text))
+        else:
+            await ch.send(out)
 
     async def save_dialog(self, ch, until_id: int, auto: bool):
         """Letzten Dialog (ab seiner Eröffnung) als Markdown speichern – ohne KI, kostet nichts."""
@@ -412,12 +473,23 @@ class RundenBot(discord.Client):
         for pid in self.cfg.get("bot.partner_bot_ids") or []:
             names.setdefault(int(pid), self.cfg.get("bot.partner_name", "Partner"))
         prefix = self.guard.prefix()
-        hist = [
-            HistMsg(m.author.id, names[m.author.id], m.content)
-            for m in msgs
-            if raw or (not (m.content.strip().startswith(prefix) and not m.content.strip()[len(prefix):].startswith("dialog"))
-                       and "-# Kontext-Reset" not in m.content and "Dialog gespeichert" not in m.content)
-        ]
+        hist = []
+        for m in msgs:
+            c = m.content.strip()
+            if not raw and ((c.startswith(prefix) and not c[len(prefix):].startswith("dialog"))
+                            or "-# Kontext-Reset" in c or "Dialog gespeichert" in c):
+                continue
+            spoken = parse_transcript(c)
+            if spoken:   # Gesprochenes zählt als Beitrag des Menschen, nicht des Bots
+                hist.append((getattr(m, "id", 0), HistMsg(0, spoken[0], spoken[1])))
+            else:
+                hist.append((getattr(m, "id", 0), HistMsg(m.author.id, names[m.author.id], m.content)))
+        if not raw:      # nur gesprochene eigene Antworten (nicht im Kanal) zeitlich einsortieren
+            lo = hist[0][0] if len(msgs) >= limit and hist else (after_id or 0)
+            hist += [(sid, HistMsg(self.user.id, names.get(self.user.id, "Bot"), t))
+                     for sid, t in self.spoken_log.get(ch.id, []) if sid > lo and (not before_id or sid < before_id)]
+            hist.sort(key=lambda x: x[0])
+        hist = [h for _, h in hist]
         return hist, names
 
     def status_text(self) -> str:
@@ -445,6 +517,16 @@ class RundenBot(discord.Client):
         elif cmd == "unset":
             self.cfg.unset(args.strip())
             await ch.send(f"✓ `{args.strip()}` zurückgesetzt")
+        elif cmd in ("beitreten", "join"):
+            vs = getattr(message.author, "voice", None)
+            if not self.voice.enabled:
+                await ch.send("Sprache ist aus – im Konfigurator unter „Sprache“ einschalten.")
+            elif not vs or not vs.channel:
+                await ch.send("Geh zuerst in einen Sprachraum, dann komme ich nach.")
+            else:
+                await ch.send(await self.voice.join(vs.channel))
+        elif cmd in ("verlassen", "leave"):
+            await ch.send(await self.voice.leave())
         elif cmd == "reset":
             await self.request_reset(ch, message.id)
         elif cmd in ("speichern", "save"):
