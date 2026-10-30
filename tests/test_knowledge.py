@@ -105,7 +105,7 @@ def test_pruefung_verbindung_und_schreibwarnung():
         names = knowledge.DEFAULT_TOOLS + ["upload_asset", "chat_reply"]
         return 200, {"result": {"tools": [{"name": n} for n in names]}}
     r = knowledge_checks(cfg(), {knowledge.KEY_ENV: "k"}, with_request=False, post=post_ok)
-    assert r[0].status == "ok" and r[1].status == "warn" and "upload_asset" in r[1].detail
+    assert r[0].status == "ok" and r[1].status == "skip" and "gesperrt" in r[1].detail
 
     assert knowledge_checks(cfg(), {}, with_request=False, post=post_ok)[0].status == "fail"
     assert knowledge_checks(cfg(), {knowledge.KEY_ENV: "k"}, with_request=False,

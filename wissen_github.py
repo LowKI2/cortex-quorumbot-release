@@ -102,7 +102,27 @@ def info(spec: str, tok: str, get=http) -> dict:
     data = json.loads(body)
     return {"full_name": data.get("full_name"), "private": bool(data.get("private")),
             "ref": ref or data.get("default_branch") or "main", "size_kb": data.get("size", 0),
-            "can_push": bool((data.get("permissions") or {}).get("push"))}
+}
+
+
+def token_can_write(tok: str, head=None) -> bool | None:
+    """Darf der Token schreiben? Nur bei klassischen Tokens (ghp_…) abfragbar – über X-OAuth-Scopes.
+    Fine-grained-Tokens (github_pat_…) verraten ihre Rechte nicht → None (unbekannt).
+    Achtung: „permissions“ in der Repo-Antwort zeigt die Rechte des KONTOS, nicht des Tokens."""
+    if not tok.startswith(("ghp_", "gho_")):
+        return None
+    if head is None:
+        from updater import _ssl_context
+        req = urllib.request.Request(API, headers=_headers(tok))
+        try:
+            with urllib.request.urlopen(req, timeout=15, context=_ssl_context()) as r:  # noqa: S310
+                scopes = r.headers.get("X-OAuth-Scopes", "")
+        except (urllib.error.URLError, TimeoutError, OSError):
+            return None
+    else:
+        scopes = head(tok)
+    found = {x.strip() for x in scopes.split(",") if x.strip()}
+    return bool(found & {"repo", "public_repo", "write:org", "admin:org", "workflow"})
 
 
 def head_sha(owner: str, name: str, ref: str, tok: str, get=http) -> str:
@@ -165,7 +185,7 @@ def sync_one(cfg, spec: str, tok: str, force: bool = False, get=http) -> dict:
     if not force and old.get("sha") == sha and dest.is_dir():
         old["ts"] = time.time()
         (dest / MARKER).write_text(json.dumps(old), encoding="utf-8")
-        return {**old, "repo": meta["full_name"], "updated": False, "can_push": meta["can_push"]}
+        return {**old, "repo": meta["full_name"], "updated": False}
     limit = int(cfg.get("knowledge.github.max_mb", 100) or 100) * 1024 * 1024
     st, blob = get(f"{API}/repos/{owner}/{name}/zipball/{sha}", _headers(tok), timeout=120, limit=limit)
     if st != 200:
@@ -174,7 +194,7 @@ def sync_one(cfg, spec: str, tok: str, force: bool = False, get=http) -> dict:
     n = extract(blob, dest, exts, int(cfg.get("knowledge.folders.max_kb", 200) or 200))
     m = {"repo": meta["full_name"], "ref": meta["ref"], "sha": sha, "files": n, "ts": time.time(), "private": meta["private"]}
     (dest / MARKER).write_text(json.dumps(m), encoding="utf-8")
-    return {**m, "updated": True, "can_push": meta["can_push"]}
+    return {**m, "updated": True}
 
 
 def sync(cfg, env: dict, force: bool = False, get=http) -> list[dict]:

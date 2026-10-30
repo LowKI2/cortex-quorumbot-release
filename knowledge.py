@@ -1,4 +1,4 @@
-"""Wissensquellen für die Abo-Variante (Claude Code) – nur lesend.
+"""Wissensquellen – nur lesend.
 
 Quellen, einzeln schaltbar:
   - lokale Ordner (über den mitgelieferten Lese-Server wissen_ordner.py)
@@ -50,12 +50,13 @@ def folders(cfg) -> list[str]:
 
 
 def folders_on(cfg) -> bool:
-    return bool(cfg.get("knowledge.folders.enabled")) and cfg.get("llm.provider") == "claude_code" and bool(folders(cfg))
+    """Lokale Ordner: mit jedem Anbieter (Abo über MCP, API über eigene Werkzeug-Schleife)."""
+    return bool(cfg.get("knowledge.folders.enabled")) and bool(folders(cfg))
 
 
 def github_on(cfg) -> bool:
     import wissen_github
-    return bool(cfg.get("knowledge.github.enabled")) and cfg.get("llm.provider") == "claude_code" and bool(wissen_github.repos(cfg))
+    return bool(cfg.get("knowledge.github.enabled")) and bool(wissen_github.repos(cfg))
 
 
 def read_roots(cfg) -> list[str]:
@@ -98,6 +99,16 @@ def folder_server_entry(cfg) -> dict:
     args += ["--ext", ",".join(exts), "--max-kb", str(int(cfg.get("knowledge.folders.max_kb", 200) or 200))]
     cmd = command("wissen-ordner", *args)
     return {"type": "stdio", "command": cmd[0], "args": cmd[1:]}
+
+
+def reader(cfg):
+    """Lese-Zugriff auf Ordner + geladene Repos (für die API-Variante, ohne MCP)."""
+    from wissen_ordner import Folders
+    roots = read_roots(cfg)
+    if not roots:
+        return None
+    return Folders(roots, cfg.get("knowledge.folders.extensions") or DEFAULT_EXT,
+                   int(cfg.get("knowledge.folders.max_kb", 200) or 200))
 
 
 def write_mcp_config(cfg, env: dict) -> str | None:

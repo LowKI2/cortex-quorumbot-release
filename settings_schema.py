@@ -104,13 +104,13 @@ SECTIONS = [
          "show_if": {"features.mediavault": [True], "knowledge.mediavault.enabled": [True]},
          "help": "Schreibende Werkzeuge gibt es hier nicht – sie sind für den Bot immer gesperrt."},
         {"key": "knowledge.folders.enabled", "label": "Lokale Ordner nutzen", "type": "bool", "default": False,
-         "help": "Nur mit Anbieter „Claude-Abo“. Der Bot darf in den gewählten Ordnern Textdateien auflisten, durchsuchen und lesen – nichts ändern. Versteckte Ordner, .env- und Schlüsseldateien sind immer gesperrt."},
+         "help": "Mit jedem Anbieter. Der Bot darf in den gewählten Ordnern Textdateien auflisten, durchsuchen und lesen – nichts ändern. Versteckte Ordner, .env- und Schlüsseldateien sind immer gesperrt."},
         {"key": "knowledge.folders.paths", "label": "Wissensordner", "type": "list", "show_if": {"knowledge.folders.enabled": [True]},
          "help": "Ein Ordner pro Zeile, z. B. C:\\Users\\Name\\Documents\\Wissen – oder unten „Ordner wählen …“. Nur Ordner, deren Inhalt in die Runde darf."},
         {"key": "knowledge.folders.extensions", "label": "Dateitypen", "type": "list", "default": KNOWLEDGE_EXT,
          "show_if": {"knowledge.folders.enabled": [True]}, "advanced": True, "help": "Nur Textformate, eins pro Zeile."},
         {"key": "knowledge.github.enabled", "label": "GitHub-Repos nutzen", "type": "bool", "default": False,
-         "help": "Nur mit Anbieter „Claude-Abo“. Der Bot lädt die Repos als Kopie auf diesen Rechner und darf darin Textdateien lesen – nichts ändern."},
+         "help": "Mit jedem Anbieter. Der Bot lädt die Repos als Kopie auf diesen Rechner und darf darin Textdateien lesen – nichts ändern."},
         {"key": "knowledge.github.repos", "label": "Repos", "type": "list", "show_if": {"knowledge.github.enabled": [True]},
          "help": "Eins pro Zeile: Besitzer/Repo oder die GitHub-Adresse, optional mit @Branch (z. B. BBZGames/Bratratz_lore@main). Private Repos brauchen GITHUB_TOKEN unter Zugangsdaten."},
         {"key": "knowledge.github.refresh_minutes", "label": "Aktualisieren alle (Minuten)", "type": "int", "min": 5, "max": 1440,
@@ -119,6 +119,9 @@ SECTIONS = [
          "show_if": {"knowledge.github.enabled": [True]}, "advanced": True},
         {"key": "knowledge.github.token_env", "label": "Name der Token-Variable in .env", "type": "text", "default": "GITHUB_TOKEN",
          "show_if": {"knowledge.github.enabled": [True]}, "advanced": True},
+        {"key": "knowledge.max_tool_rounds", "label": "Max. Nachschlage-Schritte pro Antwort (API)", "type": "int", "min": 1, "max": 15,
+         "default": 6, "advanced": True,
+         "help": "Nur Anthropic-API/OpenAI-kompatibel: so oft darf das Modell pro Antwort suchen/lesen. Jeder Schritt kostet Tokens."},
         {"key": "features.mediavault", "label": "MediaVault-Anbindung anzeigen", "type": "bool", "default": False, "advanced": True,
          "help": "Nur für einen eigenen MediaVault-Server. Blendet oben die MediaVault-Einstellungen ein."},
         {"key": "knowledge.folders.max_kb", "label": "Max. Dateigröße (KB)", "type": "int", "min": 10, "max": 5000, "default": 200,
@@ -246,13 +249,9 @@ def check_consistency(get) -> tuple[list[str], list[str]]:
         if not get("knowledge.mediavault.tools"):
             warnings.append("MediaVault-Wissen ist an, aber kein Werkzeug erlaubt.")
     if get("knowledge.folders.enabled"):
-        if get("llm.provider") != "claude_code":
-            warnings.append("Wissensordner funktionieren nur mit Anbieter „Claude-Abo“ – bei anderen Anbietern bleiben sie aus.")
         if not get("knowledge.folders.paths"):
             warnings.append("Wissensordner sind an, aber es ist kein Ordner eingetragen.")
     if get("knowledge.github.enabled"):
-        if get("llm.provider") != "claude_code":
-            warnings.append("GitHub-Wissen funktioniert nur mit Anbieter „Claude-Abo“ – bei anderen Anbietern bleibt es aus.")
         specs = get("knowledge.github.repos") or []
         if not specs:
             warnings.append("GitHub-Repos sind an, aber es ist kein Repo eingetragen.")

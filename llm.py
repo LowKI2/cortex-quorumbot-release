@@ -52,27 +52,60 @@ class LLM:
         max_tokens = int(self.cfg.get("llm.max_tokens", 800))
         temperature = self.cfg.get("llm.temperature")
         extra = {} if temperature is None else {"temperature": float(temperature)}
+        import knowledge
+        reader = knowledge.reader(self.cfg)          # Wissensordner/Repos → Lese-Werkzeuge
+        rounds = int(self.cfg.get("knowledge.max_tool_rounds", 6) or 6)
 
         if provider == "anthropic":
             if not _accepts(client.messages.create, "temperature"):
                 extra = {}          # anthropic-SDK ab 2.x kennt temperature nicht mehr (neue Modelle steuern das selbst)
-            resp = await client.messages.create(
-                model=model, max_tokens=max_tokens, system=system, messages=messages, **extra
-            )
-            text = "".join(b.text for b in resp.content if getattr(b, "type", "") == "text")
-            return text, resp.usage.input_tokens, resp.usage.output_tokens
+            if reader:
+                extra["tools"] = [{"name": t["name"], "description": t["description"], "input_schema": t["inputSchema"]}
+                                  for t in TOOL_DEFS]
+            msgs, tin, tout = list(messages), 0, 0
+            for step in range(rounds + 1):
+                if step == rounds:
+                    extra.pop("tools", None)        # letzte Runde: ohne Werkzeuge, damit eine Antwort kommt
+                    msgs.append({"role": "user", "content": "Bitte antworte jetzt mit dem, was du gefunden hast."})
+                resp = await client.messages.create(model=model, max_tokens=max_tokens, system=system, messages=msgs, **extra)
+                tin += resp.usage.input_tokens
+                tout += resp.usage.output_tokens
+                uses = [b for b in resp.content if getattr(b, "type", "") == "tool_use"]
+                if not uses or not reader:
+                    text = "".join(b.text for b in resp.content if getattr(b, "type", "") == "text")
+                    return text, tin, tout
+                msgs.append({"role": "assistant", "content": [_block(b) for b in resp.content]})
+                msgs.append({"role": "user", "content": [
+                    {"type": "tool_result", "tool_use_id": u.id, **run_tool(reader, u.name, u.input)} for u in uses]})
+            return "", tin, tout
 
-        resp = await client.chat.completions.create(
-            model=model,
-            max_tokens=max_tokens,
-            messages=[{"role": "system", "content": system}, *messages],
-            **extra,
-        )
-        text = resp.choices[0].message.content or ""
-        usage = getattr(resp, "usage", None)
-        tin = getattr(usage, "prompt_tokens", 0) or 0
-        tout = getattr(usage, "completion_tokens", 0) or 0
-        return text, tin, tout
+        kw = dict(extra)
+        if reader:
+            kw["tools"] = [{"type": "function", "function": {"name": t["name"], "description": t["description"],
+                                                             "parameters": t["inputSchema"]}} for t in TOOL_DEFS]
+        msgs, tin, tout = [{"role": "system", "content": system}, *messages], 0, 0
+        for step in range(rounds + 1):
+            if step == rounds:
+                kw.pop("tools", None)
+                msgs.append({"role": "user", "content": "Bitte antworte jetzt mit dem, was du gefunden hast."})
+            resp = await client.chat.completions.create(model=model, max_tokens=max_tokens, messages=msgs, **kw)
+            usage = getattr(resp, "usage", None)
+            tin += getattr(usage, "prompt_tokens", 0) or 0
+            tout += getattr(usage, "completion_tokens", 0) or 0
+            m = resp.choices[0].message
+            calls = getattr(m, "tool_calls", None) or []
+            if not calls or not reader:
+                return m.content or "", tin, tout
+            msgs.append({"role": "assistant", "content": m.content or "", "tool_calls": [
+                {"id": c.id, "type": "function", "function": {"name": c.function.name, "arguments": c.function.arguments}} for c in calls]})
+            for c in calls:
+                try:
+                    args = json.loads(c.function.arguments or "{}")
+                except ValueError:
+                    args = {}
+                res = run_tool(reader, c.function.name, args)
+                msgs.append({"role": "tool", "tool_call_id": c.id, "content": res["content"]})
+        return "", tin, tout
 
     # --- Abo-Variante ----------------------------------------------------
     def claude_code_command(self, system_file: str, knowledge_config: str | None = None) -> list[str]:
@@ -139,6 +172,33 @@ class LLM:
                         pass
 
         return parse_claude_json(out.decode("utf-8", "replace"), err.decode("utf-8", "replace"), proc.returncode)
+
+
+from wissen_ordner import TOOLS as TOOL_DEFS  # noqa: E402
+
+TOOL_RESULT_MAX = 20000
+
+
+def run_tool(reader, name: str, args) -> dict:
+    """Lese-Werkzeug ausführen. Nur list_files/search/read_file – sonst nichts."""
+    fn = {"list_files": reader.list_files, "search": reader.search, "read_file": reader.read_file}.get(name)
+    if fn is None:
+        return {"content": f"Unbekanntes Werkzeug {name}", "is_error": True}
+    try:
+        args = {k: v for k, v in (args or {}).items() if k in fn.__code__.co_varnames}
+        text = fn(**args)
+    except (ValueError, OSError, TypeError) as e:
+        return {"content": f"Fehler: {e}", "is_error": True}
+    if len(text) > TOOL_RESULT_MAX:
+        text = text[:TOOL_RESULT_MAX] + "\n[… gekürzt]"
+    return {"content": text}
+
+
+def _block(b) -> dict:
+    t = getattr(b, "type", "")
+    if t == "tool_use":
+        return {"type": "tool_use", "id": b.id, "name": b.name, "input": b.input}
+    return {"type": "text", "text": getattr(b, "text", "")}
 
 
 def _accepts(fn, name: str) -> bool:

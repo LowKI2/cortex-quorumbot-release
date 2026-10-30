@@ -106,11 +106,15 @@ def test_faelligkeit(tmp_path):
     assert not gh.due(c)
 
 
-def test_pruefung_warnt_bei_schreibrechten(tmp_path):
+def test_pruefung_warnt_nur_bei_klassischem_schreib_token(tmp_path):
     from checks import github_checks
     c = cfg(tmp_path)
-    r = github_checks(c, {}, get=FakeGitHub(push=True))
-    assert r[0].status == "warn" and "noch nicht geladen" in r[0].detail and r[1].name == "GitHub-Token"
+    # Konto mit Schreibrecht (permissions.push) + Fine-grained-Token → KEINE Warnung (Kontorechte ≠ Tokenrechte)
+    r = github_checks(c, {"GITHUB_TOKEN": "github_pat_x"}, get=FakeGitHub(push=True))
+    assert len(r) == 1 and r[0].status == "warn" and "noch nicht geladen" in r[0].detail
+    r = github_checks(c, {"GITHUB_TOKEN": "ghp_x"}, get=FakeGitHub(), scopes=lambda t: "repo, read:org")
+    assert r[-1].name == "GitHub-Token"
+    assert len(github_checks(c, {"GITHUB_TOKEN": "ghp_x"}, get=FakeGitHub(), scopes=lambda t: "read:org")) == 1
     gh.sync(c, {}, get=FakeGitHub())
     assert github_checks(c, {}, get=FakeGitHub())[0].status == "ok"
     assert github_checks(c, {}, get=FakeGitHub(private=True))[0].status == "fail"

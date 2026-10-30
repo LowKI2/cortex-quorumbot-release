@@ -94,9 +94,9 @@ Bei jedem Fehler steht direkt darunter, was zu tun ist. Wenn unten **„Startkla
 
 Alle fünf Punkte erfüllt: Die Runde ist einsatzbereit.
 
-## Optional: Wissen (nur Abo-Variante)
+## Optional: Wissen
 
-Der Bot kann in **lokalen Ordnern** nachschlagen – nur lesend.
+Der Bot kann in **lokalen Ordnern** und **GitHub-Repos** nachschlagen – nur lesend, mit Abo und mit API. Bei der API kostet Nachschlagen zusätzliche Tokens.
 
 1. Konfigurator → Bereich **Wissen** → „Lokale Ordner nutzen“ einschalten.
 2. **Ordner wählen …** → Ordner aussuchen → **Speichern**. Am besten einen eigenen Wissensordner nehmen, nicht ganz „Dokumente“.

@@ -8,7 +8,7 @@
 
 **Text- und Sprachbot für Discord** – eine Runde aus Menschen und KI-Bots, mit festen Leitplanken. Ein Werkzeug von BZi Studio.
 
-> **Status: Beta (v0.6.2).** Leitplanken und Abo-Anbindung sind automatisch getestet, der Betrieb mit zwei Bots in echtem Discord noch nicht. Bitte erst in einem eigenen Test-Server ausprobieren.
+> **Status: Beta (v0.7.0).** Leitplanken und Abo-Anbindung sind automatisch getestet, der Betrieb mit zwei Bots in echtem Discord noch nicht. Bitte erst in einem eigenen Test-Server ausprobieren.
 
 Gedacht für eine Runde aus zwei Menschen und zwei KIs. Jede Person betreibt **einen eigenen Bot** auf dem eigenen Rechner, mit eigenem API-Key **oder eigenem Claude-Abo**. Gleicher Code, eigene `config.yaml`.
 
@@ -82,9 +82,9 @@ Die Befehlsgruppe heißt wie dein Bot, also z. B. `/nova …` und `/kai …`. So
 
 Alles außer `stopp` nur für den Besitzer. Es gelten dieselben Prüfungen und Grenzen wie im Konfigurator. Was per Chat änderbar ist, legst du im Konfigurator unter „Chat-Rechte“ fest. Wurde der Bot ohne `applications.commands` eingeladen, einfach mit dem neuen Einladungslink nochmal einladen.
 
-## Wissen: lokale Ordner und GitHub-Repos (nur Abo-Variante)
+## Wissen: lokale Ordner und GitHub-Repos
 
-Der Bot kann in Ordnern nachschlagen, die du freigibst – **nur lesend**. Alles im Konfigurator unter **Wissen**, ohne Dateien von Hand zu bearbeiten. Wichtig: Alles, was der Bot lesen kann, kann er im Kanal auch erzählen.
+Der Bot kann in Ordnern und GitHub-Repos nachschlagen, die du freigibst – **nur lesend**, mit **jedem Anbieter** (Claude-Abo, Anthropic-API, OpenAI-kompatibel mit Werkzeug-fähigem Modell). Alles im Konfigurator unter **Wissen**, ohne Dateien von Hand zu bearbeiten. Wichtig: Alles, was der Bot lesen kann, kann er im Kanal auch erzählen.
 
 1. Konfigurator → **Wissen** → „Lokale Ordner“ einschalten → **Ordner wählen …** (mehrere Ordner möglich). **Speichern.**
 2. **Wissen prüfen** zeigt, ob die Ordner da sind und wie viele Dateien lesbar sind.
@@ -95,9 +95,11 @@ Der Bot kann in Ordnern nachschlagen, die du freigibst – **nur lesend**. Alles
 2. Für private Repos auf GitHub einen **Fine-grained-Token** anlegen (*Settings → Developer settings → Fine-grained tokens*): nur die gewünschten Repos, Berechtigung **Contents: Read-only**. Im Konfigurator unter **Zugangsdaten** bei `GITHUB_TOKEN` einfügen → **Setzen**.
 3. **Repos jetzt laden**, dann **Wissen prüfen**.
 
-Der Bot lädt die Repos als Kopie neben die `config.yaml` (`wissen-cache/`, nur Textdateien, ohne versteckte Ordner, `.env`- und Schlüsseldateien) und prüft im eingestellten Abstand (Standard 60 min), ob es Neues gibt. Der Token bleibt beim Bot – Claude Code bekommt ihn nie. Warnt die Prüfung, dass der Token schreiben darf: Der Bot schreibt nie, ein reiner Lese-Token ist trotzdem sicherer.
+Der Bot lädt die Repos als Kopie neben die `config.yaml` (`wissen-cache/`, nur Textdateien, ohne versteckte Ordner, `.env`- und Schlüsseldateien) und prüft im eingestellten Abstand (Standard 60 min), ob es Neues gibt. Der Token bleibt beim Bot – Claude Code bekommt ihn nie. Die Prüfung warnt nur bei einem klassischen Token mit Schreib-Scope; die Rechte eines Fine-grained-Tokens kann GitHub nicht abfragen lassen – dort einfach nur „Contents: Read-only“ vergeben.
 
-Technik: Pro Antwort erzeugt der Bot eine temporäre MCP-Konfiguration für den mitgelieferten Lese-Server `wissen_ordner.py` (Ordner und geladene Repos), startet `claude -p` mit genau diesen Werkzeugen und löscht die Datei danach. An Claude Code werden keine Schlüssel oder Tokens aus der Umgebung weitergegeben. Antworten mit Nachschlagen dauern länger (10–30 s) und verbrauchen mehr Abo-Kontingent.
+Technik bei der **API**: Der Bot gibt dem Modell die drei Lese-Werkzeuge `list_files`, `search`, `read_file` und führt sie selbst aus (höchstens 6 Schritte pro Antwort, unter *Wissen → Erweitert* einstellbar). Jeder Schritt kostet Tokens und zählt aufs Tagesbudget.
+
+Technik beim **Abo**: Pro Antwort erzeugt der Bot eine temporäre MCP-Konfiguration für den mitgelieferten Lese-Server `wissen_ordner.py` (Ordner und geladene Repos), startet `claude -p` mit genau diesen Werkzeugen und löscht die Datei danach. An Claude Code werden keine Schlüssel oder Tokens aus der Umgebung weitergegeben. Antworten mit Nachschlagen dauern länger (10–30 s) und verbrauchen mehr Abo-Kontingent.
 
 Der Konfigurator sucht nichts automatisch auf deinem Rechner – alle Angaben trägst du selbst ein. (Unter *Wissen → Erweitert* gibt es zusätzlich eine Anbindung an einen eigenen MediaVault-Server; die ist nur für dessen Betreiber gedacht.)
 
