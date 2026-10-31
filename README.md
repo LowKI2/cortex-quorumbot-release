@@ -8,7 +8,7 @@
 
 **Text- und Sprachbot für Discord** – eine Runde aus Menschen und KI-Bots, mit festen Leitplanken. Ein Werkzeug von BZi Studio.
 
-> **Status: Beta (v0.9.0), Sprache als Beta-Funktion.** Leitplanken und Abo-Anbindung sind automatisch getestet, der Betrieb mit zwei Bots in echtem Discord noch nicht. Bitte erst in einem eigenen Test-Server ausprobieren.
+> **Status: Beta (v0.9.1), Sprache als Beta-Funktion.** Leitplanken und Abo-Anbindung sind automatisch getestet, der Betrieb mit zwei Bots in echtem Discord noch nicht. Bitte erst in einem eigenen Test-Server ausprobieren.
 
 Gedacht für eine Runde aus zwei Menschen und zwei KIs. Jede Person betreibt **einen eigenen Bot** auf dem eigenen Rechner, mit eigenem API-Key **oder eigenem Claude-Abo**. Gleicher Code, eigene `config.yaml`.
 
@@ -149,7 +149,7 @@ Standardmäßig aus. Im Konfigurator unter **Sprache (Beta)** oder im Assistente
 |---|---|---|
 | FFmpeg (auch beim Windows-Programm) | `winget install Gyan.FFmpeg`, danach Konfigurator und Bot neu starten | gratis |
 | Spracherkennung | Groq – Key unter console.groq.com/keys | Cent-Beträge |
-| Stimme | Azure Speech, Region Germany West Central, Tarif F0 | 500.000 Zeichen/Monat gratis |
+| Stimme | Azure Speech, Tarif F0, Region z. B. West Europe (im Konfigurator als `westeurope` eintragen) | 500.000 Zeichen/Monat gratis |
 | Alternativ lokal | Piper (Stimme), faster-whisper (Erkennung, nur Python-Variante) | gratis |
 
 Der **Vollständige Test** prüft Pakete, Opus, FFmpeg und Keys und macht einen Rundlauf: Der Bot spricht einen Satz, die Spracherkennung muss ihn verstehen. Die **Hörprobe** spielt die Stimme direkt im Konfigurator ab.

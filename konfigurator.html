@@ -617,7 +617,7 @@ function renderSecrets(){
         <button class="small" data-setsecret="${esc(name)}">Setzen</button>
         ${set?`<button class="small ghost danger" data-clearsecret="${esc(name)}">Leeren</button>`:""}
       </div>
-      ${name.includes("API_KEY") && S.values["llm.provider"]==="claude_code" && set ? `<span class="err">Beim Abo leer lassen – sonst nutzt Claude Code den Key und es kostet extra.</span>`:""}
+      ${name === (S.values["llm.api_key_env"]||"ANTHROPIC_API_KEY") && S.values["llm.provider"]==="claude_code" && set ? `<span class="help">Wird beim Abo nicht gebraucht (und nicht an Claude Code weitergegeben) – kann leer bleiben.</span>`:""}
     </div>`).join("");
 }
 
@@ -903,7 +903,7 @@ function wizRender(){
       ${on ? `<ol class="howto">
         <li><span><b>FFmpeg</b> installieren – Eingabeaufforderung: <code>winget install Gyan.FFmpeg</code>, danach Konfigurator neu starten.</span></li>
         <li><span><b>Spracherkennung</b> wählen und Key setzen. Empfehlung: Groq – <a href="https://console.groq.com/keys" target="_blank" rel="noopener">console.groq.com/keys</a>, kostet Cent-Beträge.</span></li>
-        <li><span><b>Stimme</b> wählen. Empfehlung: Azure – im <a href="https://portal.azure.com" target="_blank" rel="noopener">Azure-Portal</a> einen „Speech“-Dienst anlegen (Region Germany West Central, Tarif F0 = gratis), unter „Schlüssel und Endpunkt“ Key 1 kopieren.</span></li>
+        <li><span><b>Stimme</b> wählen. Empfehlung: Azure – im <a href="https://portal.azure.com" target="_blank" rel="noopener">Azure-Portal</a> einen „Speech“-Dienst anlegen (Region z. B. West Europe, Tarif F0 = gratis – Region unten passend eintragen), unter „Schlüssel und Endpunkt“ Key 1 kopieren.</span></li>
         <li><span>Speichern, dann <b>Hörprobe</b>.</span></li></ol>
       <div class="grid">
         <div class="f"><label>Spracherkennung</label>${sel("stt.provider",["groq","openai","deepgram","lokal"],["Groq (empfohlen)","OpenAI","Deepgram","Lokal (faster-whisper)"])}</div>
@@ -912,6 +912,7 @@ function wizRender(){
         ${ttsKey && ttsKey !== sttKey ? secretBox(ttsKey, `Key für Stimme (${ttsKey})`) : ""}
         ${wfield("tts.voice","Stimme",{list:tts==="azure"?["de-DE-KatjaNeural","de-DE-ConradNeural","de-DE-SeraphinaMultilingualNeural","de-DE-FlorianMultilingualNeural"]:tts==="openai"?["alloy","nova","onyx","shimmer"]:[], ph: tts==="elevenlabs"?"Voice-ID":tts==="piper"?"Pfad zur .onnx-Stimme":"leer = Standard"})}
         ${wfield("voice.text_channel_id","Textkanal für Gesprochenes",{id:true,ph:"leer = euer Runden-Kanal"})}
+        ${tts==="azure" ? wfield("tts.azure_region","Azure-Region",{list:["westeurope","northeurope","swedencentral","germanywestcentral","eastus"],ph:"z. B. westeurope",help:"Wie beim Anlegen des Speech-Dienstes gewählt (klein, ohne Leerzeichen)."}) : ""}
       </div>
       <div class="voice-actions"><button data-wsample="1">${icon("play")}Hörprobe</button><audio class="sample-player hidden" controls></audio></div>
       <p style="margin-top:var(--space-4)" class="help">Im Sprachraum: einfach reinkommen – der Bot folgt dir. Sprich ihn mit „${esc(v("bot.name")||"Nova")}, …“ an. „Stopp“ beendet. Kopfhörer verhindern, dass er sich selbst hört.</p>` : ""}`;

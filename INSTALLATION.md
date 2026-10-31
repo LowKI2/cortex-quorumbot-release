@@ -68,7 +68,7 @@ Namen eintragen und die Persönlichkeit frei beschreiben. Die Leitplanken gelten
 Nur wenn der Bot im Sprachraum sprechen und zuhören soll – geht auch später. Sonst „Nur Text“ und weiter.
 1. **FFmpeg** installieren: Eingabeaufforderung öffnen, `winget install Gyan.FFmpeg`, danach den Konfigurator schließen und neu starten.
 2. **Spracherkennung:** Groq-Konto anlegen, unter <https://console.groq.com/keys> einen Key erstellen, im Assistenten setzen.
-3. **Stimme:** Im <https://portal.azure.com> „Speech-Dienst“ suchen → Erstellen → Region **Germany West Central**, Tarif **Free F0** → unter **Schlüssel und Endpunkt** „Schlüssel 1“ kopieren und setzen. (Alternativ Piper lokal, ElevenLabs oder OpenAI.)
+3. **Stimme:** Im <https://portal.azure.com> „Speech-Dienst“ suchen → Erstellen → Region z. B. **West Europe**, Tarif **Free F0** (Germany West Central nimmt teils keine Neukunden an) – die Region im Assistenten unter „Azure-Region“ passend eintragen (`westeurope`) → unter **Schlüssel und Endpunkt** „Schlüssel 1“ kopieren und setzen. (Alternativ Piper lokal, ElevenLabs oder OpenAI.)
 4. **Hörprobe** klicken – die Stimme ist direkt zu hören.
 
 ### Schritt 7 – Test
