@@ -1,7 +1,8 @@
 """Voice-Join-Melder – eigenständiges Modul für discord.py-Bots.
 
 Postet eine kurze Meldung in einen festgelegten Textkanal, wenn jemand einen
-überwachten Sprachraum betritt (oder hineinwechselt). Verlassen wird nicht gemeldet.
+überwachten Sprachraum betritt (oder hineinwechselt). Die Meldung ist ein Status: Verlässt die
+Person den Raum wieder, wird sie (nach kurzer Schonfrist) gelöscht – abschaltbar.
 Keine KI, keine Abhängigkeit vom restlichen Bot-Code – nur discord.py und die Standardbibliothek.
 
 Einbinden:
@@ -12,7 +13,9 @@ Config (alle Felder optional außer watch):
     enabled: true                 # Melder an/aus
     watch: {VOICE_ID: TEXT_ID}    # beliebig viele Paare, auch aus mehreren Servern
     disabled_guilds: [GUILD_ID]   # Server, in denen nicht gemeldet wird
-    cooldown_seconds: 60          # Mindestabstand pro Nutzer + Sprachraum
+    cooldown_seconds: 60          # Mindestabstand pro Nutzer + Sprachraum (nur ohne delete_on_leave)
+    delete_on_leave: true         # Meldung löschen, wenn die Person den Raum verlässt
+    leave_grace_seconds: 15       # so lange warten – wer gleich wieder reinkommt, behält seine Meldung
     template: "🎙️ {name} ist in <#{channel}>."
 
 Wichtig: Pro Server darf der Melder nur in EINEM Bot aktiv sein, sonst kommt jede Meldung doppelt.
@@ -40,6 +43,8 @@ class VoiceNotifier:
         self._config = config
         self.clock = clock
         self._last: dict[tuple[int, int], float] = {}
+        self._posted: dict[tuple[int, int], object] = {}       # (Person, Sprachraum) → gesendete Meldung
+        self._pending_delete: dict[tuple[int, int], object] = {}
 
     # --- Config --------------------------------------------------------
     def config(self) -> dict:
@@ -83,8 +88,12 @@ class VoiceNotifier:
         text_id = self.watch(cfg).get(new.id)
         if not text_id:
             return None
-        cooldown = float(cfg.get("cooldown_seconds", DEFAULT_COOLDOWN) or 0)
         key = (member.id, new.id)
+        if key in self._posted:                            # Status steht noch (z. B. gleich wieder rein)
+            return None
+        if cfg.get("delete_on_leave", True):
+            return text_id                                 # Status-Modus: Pause pro Person unnötig
+        cooldown = float(cfg.get("cooldown_seconds", DEFAULT_COOLDOWN) or 0)
         now = self.clock()
         if key in self._last and now - self._last[key] < cooldown:
             return None
@@ -102,9 +111,53 @@ class VoiceNotifier:
             log.warning("Vorlage fehlerhaft, nutze Standard: %r", template)
             return DEFAULT_TEMPLATE.format(name=name, channel=channel.id)
 
+    # --- Status löschen beim Verlassen ---------------------------------
+    def _cancel_delete(self, key):
+        task = self._pending_delete.pop(key, None)
+        if task is not None:
+            task.cancel()
+
+    async def _delete_later(self, key, seconds: float):
+        import asyncio
+        try:
+            await asyncio.sleep(seconds)
+        except asyncio.CancelledError:
+            return
+        self._pending_delete.pop(key, None)
+        msg = self._posted.pop(key, None)
+        if msg is None:
+            return
+        try:
+            await msg.delete()
+        except discord.NotFound:
+            pass
+        except Exception:  # noqa: BLE001
+            log.warning("Meldung ließ sich nicht löschen (Recht „Nachrichten verwalten“ nicht nötig – eigene Nachricht).")
+
+    def handle_leave(self, member, before, after):
+        """Person verlässt einen Raum (oder wechselt) → ihre Meldung nach der Schonfrist löschen."""
+        import asyncio
+        cfg = self.config()
+        old = getattr(before, "channel", None)
+        new = getattr(after, "channel", None)
+        if old is None or (new is not None and new.id == old.id):
+            return
+        if new is not None:
+            self._cancel_delete((member.id, new.id))       # zurück in einen Raum mit noch stehender Meldung
+        key = (member.id, old.id)
+        if key not in self._posted or not cfg.get("delete_on_leave", True):
+            return
+        self._cancel_delete(key)
+        grace = float(cfg.get("leave_grace_seconds", 15) or 0)
+        self._pending_delete[key] = asyncio.ensure_future(self._delete_later(key, grace))
+
     async def on_voice_state_update(self, member, before, after) -> None:
         text_id = None
         try:
+            new = getattr(after, "channel", None)
+            if new is not None:
+                self._cancel_delete((member.id, new.id))
+            self.handle_leave(member, before, after)
             text_id = self.should_notify(member, before, after)
             if not text_id:
                 return
@@ -112,8 +165,10 @@ class VoiceNotifier:
             if channel is None:
                 log.warning("Text-Channel %s nicht gefunden – Melder überspringt.", text_id)
                 return
-            await channel.send(self.render(member, after.channel)[:2000],
-                               allowed_mentions=discord.AllowedMentions.none())
+            sent = await channel.send(self.render(member, after.channel)[:2000],
+                                      allowed_mentions=discord.AllowedMentions.none())
+            if sent is not None and self.config().get("delete_on_leave", True):
+                self._posted[(member.id, after.channel.id)] = sent
         except discord.Forbidden:
             log.warning("Keine Schreibrechte im Text-Channel %s – Melder überspringt.", text_id)
         except Exception:  # noqa: BLE001 – der Melder darf den Bot nie zum Absturz bringen

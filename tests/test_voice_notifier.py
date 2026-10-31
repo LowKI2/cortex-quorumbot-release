@@ -78,7 +78,7 @@ def test_beitritt_genau_eine_meldung():
 
 
 def test_raus_und_rein_im_cooldown_keine_zweite_meldung():
-    n, text, clock, _ = setup()
+    n, text, clock, _ = setup(delete_on_leave=False)
     run(n, member(), state(None), state(ch(VOICE)))
     run(n, member(), state(ch(VOICE)), state(None))          # raus – wird nicht gemeldet
     clock.t += 20
@@ -110,7 +110,7 @@ def test_wechsel_in_ueberwachten_raum_wird_gemeldet_mute_nicht():
 
 
 def test_cooldown_gilt_pro_person_und_raum():
-    n, text, _, _ = setup()
+    n, text, _, _ = setup(delete_on_leave=False)
     run(n, member(uid=1), state(None), state(ch(VOICE)))
     run(n, member(uid=2), state(None), state(ch(VOICE)))         # andere Person
     run(n, member(uid=1), state(ch(VOICE)), state(ch(VOICE2)))   # gleicher Mensch, anderer Raum
@@ -185,3 +185,71 @@ def test_bot_haengt_melder_ein_und_liest_config(tmp_path):
     assert bot.voice_notifier.config()["watch"] == {VOICE: TEXT}
     bot.cfg.set("voice_notifier.enabled", "nein")                  # per Chat ausschaltbar
     assert bot.voice_notifier.config()["enabled"] is False
+
+
+
+# --- Meldung als Status: beim Verlassen löschen ----------------------------
+class Msg:
+    def __init__(self):
+        self.deleted = False
+
+    async def delete(self):
+        self.deleted = True
+
+
+class StatusText(FakeText):
+    async def send(self, content, **kw):
+        await super().send(content, **kw)
+        m = Msg()
+        self.msgs = getattr(self, "msgs", []) + [m]
+        return m
+
+
+def status_setup(**cfg):
+    text = StatusText()
+    conf = {"enabled": True, "watch": {VOICE: TEXT, VOICE2: TEXT}, "leave_grace_seconds": 0, **cfg}
+    return VoiceNotifier(FakeClient({TEXT: text}), conf, clock=Clock()), text
+
+
+def test_meldung_wird_beim_verlassen_geloescht():
+    async def flow():
+        n, text = status_setup()
+        await n.on_voice_state_update(member(), state(None), state(ch(VOICE)))
+        assert len(text.sent) == 1 and not text.msgs[0].deleted
+        await n.on_voice_state_update(member(), state(ch(VOICE)), state(None))
+        await asyncio.sleep(0.01)
+        assert text.msgs[0].deleted
+        await n.on_voice_state_update(member(), state(None), state(ch(VOICE)))   # wieder rein → neue Meldung
+        assert len(text.sent) == 2
+    asyncio.run(flow())
+
+
+def test_schnell_wieder_rein_behaelt_meldung():
+    async def flow():
+        n, text = status_setup(leave_grace_seconds=5)
+        await n.on_voice_state_update(member(), state(None), state(ch(VOICE)))
+        await n.on_voice_state_update(member(), state(ch(VOICE)), state(None))
+        await n.on_voice_state_update(member(), state(None), state(ch(VOICE)))
+        await asyncio.sleep(0.01)
+        assert len(text.sent) == 1 and not text.msgs[0].deleted and not n._pending_delete
+    asyncio.run(flow())
+
+
+def test_wechsel_loescht_alte_und_meldet_neuen_raum():
+    async def flow():
+        n, text = status_setup()
+        await n.on_voice_state_update(member(), state(None), state(ch(VOICE)))
+        await n.on_voice_state_update(member(), state(ch(VOICE)), state(ch(VOICE2)))
+        await asyncio.sleep(0.01)
+        assert len(text.sent) == 2 and text.msgs[0].deleted and not text.msgs[1].deleted
+    asyncio.run(flow())
+
+
+def test_ohne_loeschen_bleibt_meldung():
+    async def flow():
+        n, text = status_setup(delete_on_leave=False)
+        await n.on_voice_state_update(member(), state(None), state(ch(VOICE)))
+        await n.on_voice_state_update(member(), state(ch(VOICE)), state(None))
+        await asyncio.sleep(0.01)
+        assert not text.msgs[0].deleted
+    asyncio.run(flow())

@@ -81,7 +81,7 @@ class RundenBot(discord.Client):
     def _notifier_config(self) -> dict:
         """Melder-Einstellungen aus config.yaml (+ Chat-Werte), live neu geladen."""
         self.cfg.reload_if_changed()
-        keys = ("enabled", "watch", "disabled_guilds", "cooldown_seconds", "template")
+        keys = ("enabled", "watch", "disabled_guilds", "cooldown_seconds", "template", "delete_on_leave", "leave_grace_seconds")
         return {k: self.cfg.get(f"voice_notifier.{k}") for k in keys if self.cfg.get(f"voice_notifier.{k}") is not None}
 
     async def setup_hook(self):
