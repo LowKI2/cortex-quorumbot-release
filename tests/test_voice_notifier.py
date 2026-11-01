@@ -253,3 +253,29 @@ def test_ohne_loeschen_bleibt_meldung():
         await asyncio.sleep(0.01)
         assert not text.msgs[0].deleted
     asyncio.run(flow())
+
+
+
+def test_erwaehnt_eingetragene_personen_aber_nicht_sich_selbst_und_anwesende():
+    BENNI, BASTI, GAST = 501, 502, 503
+    async def flow():
+        n, text = status_setup(ping_ids=[str(BENNI), BASTI, GAST])
+        room = ch(VOICE)
+        room.members = [SimpleNamespace(id=GAST)]                    # Gast ist schon drin
+        await n.on_voice_state_update(member(uid=BASTI, name="Basti"), state(None), state(room))
+        content, kw = text.sent[0]
+        assert content.startswith(f"<@{BENNI}> ") and f"<@{BASTI}>" not in content and f"<@{GAST}>" not in content
+        am = kw["allowed_mentions"]
+        assert am.everyone is False and am.roles is False and [u.id for u in am.users] == [BENNI]
+    asyncio.run(flow())
+
+
+def test_ohne_ping_ids_keine_erwaehnung_und_ping_platzhalter():
+    async def flow():
+        n, text = status_setup()
+        await n.on_voice_state_update(member(), state(None), state(ch(VOICE)))
+        assert text.sent[0][1]["allowed_mentions"].users is False
+        n2, text2 = status_setup(ping_ids=[7], template="Hey {ping}, {name} ist im Voice")
+        await n2.on_voice_state_update(member(name="Basti"), state(None), state(ch(VOICE)))
+        assert text2.sent[0][0] == "Hey <@7>, Basti ist im Voice"
+    asyncio.run(flow())

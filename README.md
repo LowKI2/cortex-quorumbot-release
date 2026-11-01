@@ -8,7 +8,7 @@
 
 **Text- und Sprachbot für Discord** – eine Runde aus Menschen und KI-Bots, mit festen Leitplanken. Ein Werkzeug von BZi Studio.
 
-> **Status: Beta (v0.9.3), Sprache als Beta-Funktion.** Leitplanken und Abo-Anbindung sind automatisch getestet, der Betrieb mit zwei Bots in echtem Discord noch nicht. Bitte erst in einem eigenen Test-Server ausprobieren.
+> **Status: Beta (v0.9.4), Sprache als Beta-Funktion.** Leitplanken und Abo-Anbindung sind automatisch getestet, der Betrieb mit zwei Bots in echtem Discord noch nicht. Bitte erst in einem eigenen Test-Server ausprobieren.
 
 Gedacht für eine Runde aus zwei Menschen und zwei KIs. Jede Person betreibt **einen eigenen Bot** auf dem eigenen Rechner, mit eigenem API-Key **oder eigenem Claude-Abo**. Gleicher Code, eigene `config.yaml`.
 
@@ -170,9 +170,10 @@ Eigenständiges Modul (`voice_notifier.py`), läuft **ohne KI**: Betritt jemand 
 
 - Im Konfigurator unter **Voice-Melder** einschalten und Paare eintragen: `Sprachraum-ID = Textkanal-ID` (eine Zeile pro Paar, mehrere Server möglich).
 - **Die Meldung ist ein Status:** Verlässt die Person den Sprachraum, wird ihre Meldung gelöscht (nach 15 s Schonfrist – wer nach einem Verbindungsabbruch gleich wieder drin ist, behält sie). Abschaltbar: „Meldung löschen, wenn die Person geht“. Nach einem Neustart des Bots kennt er ältere Meldungen nicht mehr, die bleiben dann stehen.
-- Bots werden ignoriert, Pings (@everyone, @here, Nutzer) werden nie ausgelöst.
+- **Benachrichtigen:** Unter „Diese Personen benachrichtigen“ User-IDs eintragen (z. B. du und Benni). Die Meldung erwähnt sie dann – „@Benni 🎙️ Basti ist in 🔊 Lounge.“ – und sie bekommen eine echte Discord-Benachrichtigung. Die Person, die selbst beitritt, und wer schon im Raum ist, werden nicht erwähnt. In der Vorlage steht dafür `{ping}` (sonst vorne angehängt).
+- Bots werden ignoriert; @everyone, @here und Rollen werden nie ausgelöst.
 - Ohne Löschen gilt eine Pause: Raus und gleich wieder rein wird innerhalb von 60 s (pro Person und Raum) nicht erneut gemeldet.
-- Nachricht als Vorlage: `{name}`, `{channel}` (Sprachraum als Link), `{channel_name}`.
+- Nachricht als Vorlage: `{name}`, `{channel}` (Sprachraum als Link), `{channel_name}`, `{ping}`.
 - Fehlt der Textkanal oder das Schreibrecht, wird nur ins Log geschrieben – der Bot läuft weiter.
 - Per Chat schaltbar: `!set voice_notifier.enabled nein` bzw. `/nova set`.
 

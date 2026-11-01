@@ -17,6 +17,8 @@ Config (alle Felder optional außer watch):
     delete_on_leave: true         # Meldung löschen, wenn die Person den Raum verlässt
     leave_grace_seconds: 15       # so lange warten – wer gleich wieder reinkommt, behält seine Meldung
     template: "🎙️ {name} ist in <#{channel}>."
+    ping_ids: [USER_ID]           # diese Personen per @-Erwähnung benachrichtigen (nicht die beitretende
+                                  # Person selbst, nicht wer schon im Raum ist); in der Vorlage: {ping}
 
 Wichtig: Pro Server darf der Melder nur in EINEM Bot aktiv sein, sonst kommt jede Meldung doppelt.
 Der Bot braucht im Ziel-Textkanal die Rechte „Kanal ansehen“ und „Nachrichten senden“.
@@ -102,14 +104,24 @@ class VoiceNotifier:
             self._last = {k: t for k, t in self._last.items() if now - t < cooldown}
         return text_id
 
-    def render(self, member, channel) -> str:
+    def ping_targets(self, member, channel) -> list[int]:
+        """Wer per Erwähnung benachrichtigt wird: alle aus ping_ids außer der Person selbst und
+        allen, die schon im Sprachraum sind."""
+        present = {getattr(m, "id", None) for m in (getattr(channel, "members", None) or [])}
+        return [i for i in sorted(self._ids(self.config().get("ping_ids"))) if i != member.id and i not in present]
+
+    def render(self, member, channel, pings: list[int] | None = None) -> str:
         template = self.config().get("template") or DEFAULT_TEMPLATE
         name = getattr(member, "display_name", None) or getattr(member, "name", "Jemand")
+        ping = " ".join(f"<@{i}>" for i in (pings or []))
         try:
-            return template.format(name=name, channel=channel.id, channel_name=channel.name)
+            text = template.format(name=name, channel=channel.id, channel_name=channel.name, ping=ping)
         except (KeyError, IndexError, ValueError):
             log.warning("Vorlage fehlerhaft, nutze Standard: %r", template)
-            return DEFAULT_TEMPLATE.format(name=name, channel=channel.id)
+            text = DEFAULT_TEMPLATE.format(name=name, channel=channel.id)
+        if ping and "{ping}" not in template:
+            text = f"{ping} {text}"
+        return text
 
     # --- Status löschen beim Verlassen ---------------------------------
     def _cancel_delete(self, key):
@@ -165,8 +177,11 @@ class VoiceNotifier:
             if channel is None:
                 log.warning("Text-Channel %s nicht gefunden – Melder überspringt.", text_id)
                 return
-            sent = await channel.send(self.render(member, after.channel)[:2000],
-                                      allowed_mentions=discord.AllowedMentions.none())
+            pings = self.ping_targets(member, after.channel)
+            mentions = (discord.AllowedMentions(everyone=False, roles=False, replied_user=False,
+                                                users=[discord.Object(id=i) for i in pings])
+                        if pings else discord.AllowedMentions.none())
+            sent = await channel.send(self.render(member, after.channel, pings)[:2000], allowed_mentions=mentions)
             if sent is not None and self.config().get("delete_on_leave", True):
                 self._posted[(member.id, after.channel.id)] = sent
         except discord.Forbidden:

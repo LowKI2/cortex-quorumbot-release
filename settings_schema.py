@@ -158,6 +158,9 @@ SECTIONS = [
          "help": "Meldet im Textkanal, wenn jemand einen überwachten Sprachraum betritt. Ohne KI. Pro Server nur in EINEM Bot einschalten, sonst doppelte Meldungen."},
         {"key": "voice_notifier.watch", "label": "Sprachraum → Textkanal", "type": "pairs", "show_if": {"voice_notifier.enabled": [True]},
          "help": "Eine Zeile pro Paar: Sprachraum-ID = Textkanal-ID. Mehrere Paare und Server möglich. Bot braucht im Textkanal „Kanal ansehen“ und „Nachrichten senden“."},
+        {"key": "voice_notifier.ping_ids", "label": "Diese Personen benachrichtigen", "type": "idlist",
+         "show_if": {"voice_notifier.enabled": [True]},
+         "help": "User-IDs, eine pro Zeile. Sie werden in der Meldung erwähnt und bekommen eine Benachrichtigung – außer die Person, die selbst beitritt, und wer schon im Sprachraum ist. Leer = niemand wird erwähnt."},
         {"key": "voice_notifier.delete_on_leave", "label": "Meldung löschen, wenn die Person geht", "type": "bool", "default": True,
          "show_if": {"voice_notifier.enabled": [True]}, "help": "Die Meldung ist dann ein Status: Sie steht nur, solange die Person im Sprachraum ist."},
         {"key": "voice_notifier.leave_grace_seconds", "label": "Schonfrist beim Verlassen (s)", "type": "int", "min": 0, "max": 600, "default": 15,
@@ -167,7 +170,7 @@ SECTIONS = [
          "default": 60, "show_if": {"voice_notifier.enabled": [True], "voice_notifier.delete_on_leave": [False]},
          "help": "Nur ohne „Meldung löschen“: Raus und gleich wieder rein wird innerhalb dieser Zeit nicht erneut gemeldet."},
         {"key": "voice_notifier.template", "label": "Nachricht", "type": "text", "default": "🎙️ {name} ist in <#{channel}>.",
-         "show_if": {"voice_notifier.enabled": [True]}, "help": "{name} = Anzeigename, {channel} = Sprachraum (als Link), {channel_name} = Name als Text. Pings werden nie ausgelöst."},
+         "show_if": {"voice_notifier.enabled": [True]}, "help": "{name} = Anzeigename, {channel} = Sprachraum (als Link), {channel_name} = Name als Text, {ping} = Erwähnungen (sonst vorne). Andere Pings (@everyone, Rollen) werden nie ausgelöst."},
         {"key": "voice_notifier.disabled_guilds", "label": "Server ohne Melder", "type": "idlist", "show_if": {"voice_notifier.enabled": [True]},
          "advanced": True, "help": "Server-IDs, in denen dieser Bot nicht meldet (z. B. weil dort schon ein anderer Bot meldet)."},
     ]),
@@ -352,9 +355,9 @@ def check_consistency(get) -> tuple[list[str], list[str]]:
             warnings.append("Voice-Melder ist an, aber es ist kein Sprachraum → Textkanal eingetragen.")
         tpl = get("voice_notifier.template") or ""
         try:
-            tpl.format(name="x", channel=1, channel_name="x")
+            tpl.format(name="x", channel=1, channel_name="x", ping="")
         except (KeyError, IndexError, ValueError):
-            errors.append("Voice-Melder: Vorlage fehlerhaft – erlaubt sind {name}, {channel}, {channel_name}.")
+            errors.append("Voice-Melder: Vorlage fehlerhaft – erlaubt sind {name}, {channel}, {channel_name}, {ping}.")
     if get("voice.enabled"):
         if get("voice.live_input") and not (get("voice.text_channel_id") or get("discord.allowed_channel_ids")):
             warnings.append("Sprache: Kein Textkanal für Gesprochenes – unter Sprache oder Discord einen Kanal eintragen.")
