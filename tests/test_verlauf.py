@@ -190,3 +190,15 @@ def test_ohne_partner_sofort(tmp_path):
     ch = FakeChannel([])
     asyncio.run(bot.request_reset(ch, 9))
     assert "Mir egal" in ch.sent[-1] and bot.guard.state(CH).context_after_id == 9
+
+
+def test_datenschutz_nur_besitzer_und_bots_an_die_ki(tmp_path):
+    bot = make_bot(tmp_path, include_other_humans=False)
+    ch = FakeChannel([m(1, OWNER, "meins", name="Basti"), m(2, 777, "fremd", name="Gast"),
+                      m(3, PARTNER, "bot", True, "Punky"), m(4, PARTNER, "🎙️ **Benni:** gesagt", True, "Punky")])
+    hist, _ = asyncio.run(bot.fetch_history(ch, 0))
+    assert [h.content for h in hist] == ["meins", "bot"]
+    (tmp_path / "x").mkdir()
+    bot2 = make_bot(tmp_path / "x")
+    hist2, _ = asyncio.run(bot2.fetch_history(ch, 0))
+    assert len(hist2) == 4

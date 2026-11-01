@@ -28,7 +28,7 @@ ROOT = Path(__file__).resolve().parents[1]
 USER_PACKAGE = "CortexQuorumBot.zip"
 EXE_PACKAGE = "CortexQuorumBot-Windows.zip"
 EXE_FILE = ROOT / "dist" / "exe" / "CortexQuorumBot.exe"
-EXE_EXTRA = ("config.example.yaml", ".env.example", "LICENSE", "README.md")
+EXE_EXTRA = ("config.example.yaml", ".env.example", "LICENSE", "README.md", "DATENSCHUTZ.md")
 EXE_BATS = {
     "konfigurator.bat": "CortexQuorumBot.exe konfigurator config.yaml %* & if errorlevel 75 (exit) else (pause)",
     "start.bat": "if not exist config.yaml echo config.yaml fehlt - erst konfigurator.bat starten. & pause & exit /b 1\r\n"
@@ -52,6 +52,7 @@ So geht's los
 4. Wenn der Test "Startklar" meldet: start.bat doppelklicken.
 
 Ausführliche Anleitung mit Funktionstest: ANLEITUNG.html (Doppelklick öffnet sie im Browser).
+Datenschutz (was wohin fließt + Vorlage für deinen Discord-Server): DATENSCHUTZ.html
 
 Wichtig
 - Discord-Token und API-Key gehören nur in die Datei .env in diesem Ordner. Niemals weitergeben.
@@ -79,6 +80,7 @@ Programme, die mit PyInstaller gebaut wurden, fälschlich als verdächtig. Wer d
 nimmt die Python-Variante (CortexQuorumBot.zip) – gleicher Inhalt, offener Quellcode.
 
 Für die Abo-Variante muss Claude Code installiert und angemeldet sein (siehe ANLEITUNG.html).
+Datenschutz (was wohin fließt + Vorlage für deinen Discord-Server): DATENSCHUTZ.html
 Updates: Konfigurator -> Bereich "Updates" (Einstellungen bleiben erhalten).
 
 Wichtig
@@ -94,7 +96,7 @@ HTML = """<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Cortex QuorumBot · Anleitung</title>
+<title>Cortex QuorumBot · {doc}</title>
 <style>
 :root{{--font-sans:"Inter","Segoe UI",system-ui,-apple-system,sans-serif;--font-mono:"JetBrains Mono","Cascadia Mono","Consolas",monospace;
   --bg-0:#070b12;--bg-1:#0c121d;--bg-2:#111a28;--bg-3:#162233;--line:rgba(255,255,255,.07);--line-strong:rgba(255,255,255,.14);
@@ -138,7 +140,7 @@ footer{{max-width:920px;margin:auto;padding:0 16px 40px;color:var(--text-2);font
 <body>
 <header><div class="top">
   <div class="logo" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="2.2"/><circle cx="12" cy="4.5" r="1.6"/><circle cx="19.5" cy="12" r="1.6"/><circle cx="12" cy="19.5" r="1.6"/><circle cx="4.5" cy="12" r="1.6"/><path d="M12 6.4v3.3M17.6 12h-3.3M12 17.6v-3.3M6.4 12h3.3"/></svg></div>
-  <div><b>Cortex QuorumBot</b><span class="label">Anleitung · {version}</span></div>
+  <div><b>Cortex QuorumBot</b><span class="label">{doc} · {version}</span></div>
 </div></header>
 <main><article class="card">
 {body}
@@ -166,12 +168,12 @@ def source_files(tag: str | None) -> dict[str, bytes]:
     return out
 
 
-def render_guide(md_text: str, version: str) -> str:
+def render_guide(md_text: str, version: str, doc: str = "Anleitung") -> str:
     import markdown
     body = markdown.markdown(md_text, extensions=["tables", "fenced_code", "sane_lists"])
     body = body.replace("<li>[ ] ", "<li>☐ ").replace("<li>[x] ", "<li>☑ ")
     body = re.sub(r'<a href="(https?://[^"]+)">', r'<a href="\1" target="_blank" rel="noopener">', body)
-    return HTML.format(version=html.escape(version), body=body)
+    return HTML.format(version=html.escape(version), body=body, doc=html.escape(doc))
 
 
 def write_zip(path: Path, files: dict[str, bytes], prefix: str):
@@ -197,6 +199,8 @@ def build(tag: str, out: Path) -> list[Path]:
             if not n.startswith(EXCLUDE_PREFIXES) and n not in EXCLUDE_FILES}
     user["ANLEITUNG.html"] = render_guide(files["INSTALLATION.md"].decode("utf-8"), tag).encode("utf-8")
     user["LIESMICH.txt"] = LIESMICH.format(version=tag).replace("\n", "\r\n").encode("utf-8-sig")
+    if "DATENSCHUTZ.md" in files:
+        user["DATENSCHUTZ.html"] = render_guide(files["DATENSCHUTZ.md"].decode("utf-8"), tag, "Datenschutz").encode("utf-8")
 
     p_user = out / USER_PACKAGE
     p_src = out / f"cortex-quorumbot-{tag}-quellcode.zip"
@@ -207,6 +211,8 @@ def build(tag: str, out: Path) -> list[Path]:
         win = {n: files[n] for n in EXE_EXTRA if n in files}
         win["CortexQuorumBot.exe"] = EXE_FILE.read_bytes()
         win["ANLEITUNG.html"] = user["ANLEITUNG.html"]
+        if "DATENSCHUTZ.html" in user:
+            win["DATENSCHUTZ.html"] = user["DATENSCHUTZ.html"]
         win["LIESMICH.txt"] = LIESMICH_EXE.format(version=tag).replace("\n", "\r\n").encode("utf-8-sig")
         for name, body in EXE_BATS.items():
             win[name] = (BAT_HEAD + body + "\r\n").encode("ascii")

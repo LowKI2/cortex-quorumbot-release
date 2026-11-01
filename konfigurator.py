@@ -549,6 +549,10 @@ def make_handler(store: "Store"):
                 return self._json(store.discord_identity())
             if self.path in ASSETS:
                 return self._send(200, (HERE / "assets" / self.path.rsplit("/", 1)[1]).read_bytes(), "image/png")
+            if self.path.startswith("/assets/fonts/") and self.path.endswith(".woff2") and "/" not in self.path[14:] and ".." not in self.path:
+                f = HERE / "assets" / "fonts" / self.path[14:]
+                if f.is_file():
+                    return self._send(200, f.read_bytes(), "font/woff2")
             if self.path == "/api/discord/profile":
                 return self._json(store.bot_profile())
             self._json({"error": "nicht gefunden"}, 404)

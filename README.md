@@ -8,7 +8,7 @@
 
 **Text- und Sprachbot für Discord** – eine Runde aus Menschen und KI-Bots, mit festen Leitplanken. Ein Werkzeug von BZi Studio.
 
-> **Status: Beta (v0.9.2), Sprache als Beta-Funktion.** Leitplanken und Abo-Anbindung sind automatisch getestet, der Betrieb mit zwei Bots in echtem Discord noch nicht. Bitte erst in einem eigenen Test-Server ausprobieren.
+> **Status: Beta (v0.9.3), Sprache als Beta-Funktion.** Leitplanken und Abo-Anbindung sind automatisch getestet, der Betrieb mit zwei Bots in echtem Discord noch nicht. Bitte erst in einem eigenen Test-Server ausprobieren.
 
 Gedacht für eine Runde aus zwei Menschen und zwei KIs. Jede Person betreibt **einen eigenen Bot** auf dem eigenen Rechner, mit eigenem API-Key **oder eigenem Claude-Abo**. Gleicher Code, eigene `config.yaml`.
 
@@ -155,6 +155,12 @@ Standardmäßig aus. Im Konfigurator unter **Sprache (Beta)** oder im Assistente
 Der **Vollständige Test** prüft Pakete, Opus, FFmpeg und Keys und macht einen Rundlauf: Der Bot spricht einen Satz, die Spracherkennung muss ihn verstehen. Die **Hörprobe** spielt die Stimme direkt im Konfigurator ab.
 
 **Beta heißt:** Der Live-Empfang baut auf Discords Ende-zu-Ende-Verschlüsselung (DAVE) auf und ist in echtem Discord noch nicht erprobt. Wenn Live-Zuhören nicht klappt, gehen Sprachnachrichten immer. Antwortzeit 2–4 s (mit Abo mehr). Kopfhörer verhindern, dass der Bot sich selbst hört.
+
+## Datenschutz
+
+Der Bot läuft bei dir, der Hersteller erhält keine Daten (keine Telemetrie, der Konfigurator lädt nichts von fremden Servern). Welche Daten wohin fließen – Discord, KI-Anbieter, Sprachdienste, GitHub – und was auf deinem Rechner liegt, steht in **[DATENSCHUTZ.md](DATENSCHUTZ.md)** (im Paket als `DATENSCHUTZ.html`). Dort gibt es auch eine **Vorlage für einen Datenschutzhinweis**, die du ausfüllst und in deinem Discord-Server sichtbar machst, wenn du den Bot für andere anbietest. Für öffentliche Server: „Nachrichten anderer Menschen an die KI senden“ ausschalten und einen eigenen Bot-Kanal verwenden.
+
+> Hinweis: keine Rechtsberatung – verantwortlich ist, wer einen Bot betreibt.
 
 ## Voice-Join-Melder
 

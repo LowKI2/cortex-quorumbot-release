@@ -67,6 +67,8 @@ SECTIONS = [
          "max": 1900, "default": 1500},
         {"key": "context.max_messages", "label": "Mitgelesene Nachrichten", "type": "int", "min": 2, "max": 100,
          "default": 30},
+        {"key": "context.include_other_humans", "label": "Nachrichten anderer Menschen an die KI senden", "type": "bool", "default": True,
+         "help": "An: Der Bot liest alles im Kanal als Kontext (auch was andere schreiben) und schickt es an den KI-Anbieter. Aus (datensparsam, für öffentliche Server): nur deine Nachrichten und die der Bots."},
         {"key": "context.reset_save", "label": "Vor !reset zusammenfassen und speichern", "type": "bool", "default": False,
          "help": "!reset setzt den Verlauf bei beiden Bots zurück. An: vorher fasst die KI den Verlauf zusammen und speichert ihn als Markdown-Datei auf diesem Rechner (kostet eine Anfrage). Aus: nur zurücksetzen."},
         {"key": "context.reset_carry_summary", "label": "Zusammenfassung als Startkontext behalten", "type": "bool", "default": True,

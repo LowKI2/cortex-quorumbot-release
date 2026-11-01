@@ -70,6 +70,19 @@ def no(reason: str) -> Decision:
     return Decision(False, reason)
 
 
+CONTROL_LINE_RE = re.compile(r"^[ \t]*-#.*$", re.MULTILINE)          # Steuer-/Statuszeilen der Bots
+TRANSCRIPT_START_RE = re.compile(r"^\s*🎙\ufe0f?\s*\*\*", re.MULTILINE)
+
+
+def sanitize(text: str) -> str:
+    """KI-Text darf keine Steuerzeilen enthalten (Runde x/y, Kontext-Reset, Statuszeilen) und nicht
+    wie ein Sprach-Transkript („🎙️ **Name:** …“) aussehen – sonst könnte eine manipulierte KI den
+    anderen Bot steuern (z. B. Reset + Chat löschen auslösen). Die echten Zeilen hängt der Bot selbst an."""
+    text = CONTROL_LINE_RE.sub("", text or "")
+    text = TRANSCRIPT_START_RE.sub("**", text)
+    return re.sub(r"\n{3,}", "\n\n", text)
+
+
 def strip_footer(text: str) -> str:
     return FOOTER_LINE_RE.sub("", text).strip()
 
@@ -268,7 +281,7 @@ class Guard:
         """Gibt (Text, weiterreichen?) zurück."""
         st = self.state(channel_id)
         ended = END_MARKER in text
-        text = text.replace(END_MARKER, "").strip()
+        text = sanitize(text.replace(END_MARKER, "")).strip()
         max_chars = int(self.g("persona.max_reply_chars", 1500))
         if len(text) > max_chars:
             text = text[: max_chars - 1].rstrip() + "…"

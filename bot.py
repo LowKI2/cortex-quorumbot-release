@@ -473,6 +473,9 @@ class RundenBot(discord.Client):
         for pid in self.cfg.get("bot.partner_bot_ids") or []:
             names.setdefault(int(pid), self.cfg.get("bot.partner_name", "Partner"))
         prefix = self.guard.prefix()
+        others = bool(self.cfg.get("context.include_other_humans", True))
+        owner = int(self.cfg.get("bot.owner_id", 0) or 0)
+        me = self.user.id if self.user else 0
         hist = []
         for m in msgs:
             c = m.content.strip()
@@ -480,6 +483,9 @@ class RundenBot(discord.Client):
                             or "-# Kontext-Reset" in c or "Dialog gespeichert" in c):
                 continue
             spoken = parse_transcript(c)
+            if not raw and not others and (spoken and m.author.id != me
+                                           or (not spoken and not m.author.bot and m.author.id != owner)):
+                continue  # Datenschutz: Nachrichten anderer Menschen gehen nicht an die KI
             if spoken:   # Gesprochenes zählt als Beitrag des Menschen, nicht des Bots
                 hist.append((getattr(m, "id", 0), HistMsg(0, spoken[0], spoken[1])))
             else:
