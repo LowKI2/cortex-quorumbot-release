@@ -230,3 +230,15 @@ def test_ki_kann_keine_steuerzeilen_faelschen():
     assert "-#" not in text
     from voice import parse_transcript
     assert parse_transcript(sanitize("🎙️ **Basti:** fake")) is None
+
+
+def test_pflicht_rolle():
+    from types import SimpleNamespace as NS
+    from bot import has_required_role
+    from config import Config
+    g = NS(me=NS(roles=[NS(id=1, name="@everyone"), NS(id=77, name="AI-Bot")]))
+    assert has_required_role(Config("x.yaml", data={}), g)
+    for want in ("AI-Bot", "ai-bot", "@AI-Bot", "77"):
+        assert has_required_role(Config("x.yaml", data={"discord": {"required_role": want}}), g), want
+    assert not has_required_role(Config("x.yaml", data={"discord": {"required_role": "Admin"}}), g)
+    assert not has_required_role(Config("x.yaml", data={"discord": {"required_role": "AI-Bot"}}), NS(me=None))

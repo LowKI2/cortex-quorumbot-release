@@ -8,7 +8,7 @@
 
 **Text- und Sprachbot für Discord** – eine Runde aus Menschen und KI-Bots, mit festen Leitplanken. Ein Werkzeug von BZi Studio.
 
-> **Status: Beta (v0.9.4), Sprache als Beta-Funktion.** Leitplanken und Abo-Anbindung sind automatisch getestet, der Betrieb mit zwei Bots in echtem Discord noch nicht. Bitte erst in einem eigenen Test-Server ausprobieren.
+> **Status: Beta (v0.9.5), Sprache als Beta-Funktion.** Leitplanken und Abo-Anbindung sind automatisch getestet, der Betrieb mit zwei Bots in echtem Discord noch nicht. Bitte erst in einem eigenen Test-Server ausprobieren.
 
 Gedacht für eine Runde aus zwei Menschen und zwei KIs. Jede Person betreibt **einen eigenen Bot** auf dem eigenen Rechner, mit eigenem API-Key **oder eigenem Claude-Abo**. Gleicher Code, eigene `config.yaml`.
 
@@ -155,6 +155,17 @@ Standardmäßig aus. Im Konfigurator unter **Sprache (Beta)** oder im Assistente
 Der **Vollständige Test** prüft Pakete, Opus, FFmpeg und Keys und macht einen Rundlauf: Der Bot spricht einen Satz, die Spracherkennung muss ihn verstehen. Die **Hörprobe** spielt die Stimme direkt im Konfigurator ab.
 
 **Beta heißt:** Der Live-Empfang baut auf Discords Ende-zu-Ende-Verschlüsselung (DAVE) auf und ist in echtem Discord noch nicht erprobt. Wenn Live-Zuhören nicht klappt, gehen Sprachnachrichten immer. Antwortzeit 2–4 s (mit Abo mehr). Kopfhörer verhindern, dass der Bot sich selbst hört.
+
+## Bots nur mit Admin-Rolle (empfohlen für öffentliche Server)
+
+Discord legt für jeden Bot automatisch eine eigene Rolle mit seinem Namen an (z. B. „Cortex“). Damit stattdessen ein Admin bestimmt, was die Bots dürfen:
+
+1. Konfigurator → **Discord** → **Pflicht-Rolle des Bots**: z. B. `AI-Bot` (Name oder Rollen-ID). Der Bot arbeitet dann auf einem Server **nur, wenn er diese Rolle hat** – ohne sie bleibt er komplett still (kein Antworten, kein Sprachraum, kein Voice-Melder, keine Slash-Befehle).
+2. Optional **Einladen ohne eigene Rechte**: Der Einladungslink fordert keine Rechte an, die automatische Bot-Rolle bleibt leer. Alle Rechte stecken dann in der Admin-Rolle.
+3. Admin: Servereinstellungen → **Rollen** → Rolle `AI-Bot` anlegen mit *Kanäle ansehen*, *Nachrichten senden*, *Nachrichtenverlauf lesen*, *Reaktionen hinzufügen* (für Sprache zusätzlich *Verbinden*, *Sprechen*). Dann Rechtsklick auf den Bot → **Rollen** → `AI-Bot` anhaken. Nur wer *Rollen verwalten* darf, kann sie vergeben oder wieder wegnehmen.
+4. **Vollständiger Test** zeigt pro Server, ob die Rolle da und vergeben ist.
+
+Die Prüfung läuft über den Discord-Token des Bots; entzieht ein Admin die Rolle, ist der Bot sofort still.
 
 ## Datenschutz
 

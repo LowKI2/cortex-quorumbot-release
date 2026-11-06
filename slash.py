@@ -40,7 +40,8 @@ def setup_slash(bot):
                              guild_only=True)
 
     def is_owner(i: discord.Interaction) -> bool:
-        return i.user.id == int(cfg.get("bot.owner_id", 0) or 0)
+        from bot import has_required_role
+        return i.user.id == int(cfg.get("bot.owner_id", 0) or 0) and (i.guild is None or has_required_role(cfg, i.guild))
 
     async def deny(i: discord.Interaction):
         await i.response.send_message("Das darf nur der Besitzer dieses Bots.", ephemeral=True)

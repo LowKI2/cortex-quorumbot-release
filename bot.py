@@ -38,6 +38,20 @@ HILFE = """**Befehle** (nur für meinen Besitzer)
 `{p}hilfe` – diese Übersicht"""
 
 
+def has_required_role(cfg, guild) -> bool:
+    """Pflicht-Rolle (Name oder ID) gesetzt? Dann arbeitet der Bot nur, wenn ein Admin sie ihm gegeben hat."""
+    want = str(cfg.get("discord.required_role") or "").strip()
+    if not want:
+        return True
+    me = getattr(guild, "me", None)
+    if me is None:
+        return False
+    for r in getattr(me, "roles", []) or []:
+        if str(r.id) == want or (r.name or "").casefold() == want.lstrip("@").casefold():
+            return True
+    return False
+
+
 def mentioned_ids(message) -> set[int]:
     """Erwähnte Nutzer – auch wenn statt des Bots seine automatische Rolle gleichen Namens erwähnt wurde
     (Discord schlägt beim Tippen von @Name oft die Rolle zuerst vor)."""
@@ -74,9 +88,10 @@ class RundenBot(discord.Client):
         self.reset_to_confirm: dict[int, int] = {}   # Kanal → Anfrage des Partners (wartet auf meinen Besitzer)
         self.tree = app_commands.CommandTree(self)
         self.voice = VoiceManager(self)
+        self._role_warned: set[int] = set()
         self.spoken_log: dict[int, list[tuple[int, str]]] = defaultdict(list)   # nur gesprochene Antworten (ohne Text)
         self._synced = False
-        attach_voice_notifier(self, self._notifier_config)
+        attach_voice_notifier(self, self._notifier_config, guild_allowed=lambda g: has_required_role(self.cfg, g))
 
     def _notifier_config(self) -> dict:
         """Melder-Einstellungen aus config.yaml (+ Chat-Werte), live neu geladen."""
@@ -141,6 +156,9 @@ class RundenBot(discord.Client):
             log.info("Config neu geladen")
         if message.guild is None:
             return  # keine DMs
+        if not has_required_role(self.cfg, message.guild):
+            self._warn_role(message.guild)
+            return
         own = message.author.id == self.user.id
         spoken = parse_transcript(message.content)
         if spoken and own:
@@ -236,7 +254,15 @@ class RundenBot(discord.Client):
         async with self.locks[ch.id]:
             await self.respond(ch, d)
 
+    def _warn_role(self, guild):
+        if guild.id not in self._role_warned:
+            self._role_warned.add(guild.id)
+            log.warning("Server „%s“: Mir fehlt die Pflicht-Rolle „%s“ – ich bleibe dort still, bis ein Admin sie vergibt.",
+                        guild.name, self.cfg.get("discord.required_role"))
+
     async def on_voice_state_update(self, member, before, after):
+        if not has_required_role(self.cfg, member.guild):
+            return
         await self.voice.on_voice_state_update(member, before, after)
 
     def _should_speak(self, d: Decision, pass_on: bool) -> bool:

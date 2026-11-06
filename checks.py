@@ -181,6 +181,24 @@ def discord_checks(cfg, token: str, get=http_get) -> list[Result]:
             out.append(Result("Server", "fail", "Bot ist auf keinem Server",
                               "Im Konfigurator „Einladungslink“ klicken, Link öffnen, Server wählen."))
 
+    want = str(cfg.get("discord.required_role") or "").strip()
+    if want and st == 200 and isinstance(guilds, list):
+        for g in guilds[:10]:
+            st_r, roles = get(f"{DISCORD_API}/guilds/{g['id']}/roles", auth)
+            st_m, mem = get(f"{DISCORD_API}/guilds/{g['id']}/members/{me.get('id')}", auth)
+            if st_r != 200 or st_m != 200:
+                out.append(Result(f"Pflicht-Rolle ({g.get('name')})", "warn", "konnte nicht geprüft werden"))
+                continue
+            match = [r for r in roles if str(r.get("id")) == want or (r.get("name") or "").casefold() == want.lstrip("@").casefold()]
+            if not match:
+                out.append(Result(f"Pflicht-Rolle ({g.get('name')})", "fail", f"Rolle „{want}“ gibt es auf dem Server nicht",
+                                  "Admin: Servereinstellungen → Rollen → Rolle anlegen (oder Namen/ID hier korrigieren)."))
+            elif not set(map(str, mem.get("roles") or [])) & {str(r["id"]) for r in match}:
+                out.append(Result(f"Pflicht-Rolle ({g.get('name')})", "fail", f"Bot hat die Rolle „{want}“ nicht – er bleibt dort still",
+                                  "Admin: Rechtsklick auf den Bot → Rollen → Häkchen setzen."))
+            else:
+                out.append(Result(f"Pflicht-Rolle ({g.get('name')})", "ok", f"„{want}“ vergeben"))
+
     for cid in cfg.get("discord.allowed_channel_ids") or []:
         st, ch = get(f"{DISCORD_API}/channels/{cid}", auth)
         if st == 200:

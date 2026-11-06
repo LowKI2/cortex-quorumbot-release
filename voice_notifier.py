@@ -40,8 +40,10 @@ ConfigSource = Union[dict, Callable[[], dict]]
 
 
 class VoiceNotifier:
-    def __init__(self, client: discord.Client, config: ConfigSource, clock: Callable[[], float] = time.monotonic):
+    def __init__(self, client: discord.Client, config: ConfigSource, clock: Callable[[], float] = time.monotonic,
+                 guild_allowed: Callable[[object], bool] | None = None):
         self.client = client
+        self.guild_allowed = guild_allowed or (lambda guild: True)
         self._config = config
         self.clock = clock
         self._last: dict[tuple[int, int], float] = {}
@@ -86,6 +88,8 @@ class VoiceNotifier:
             return None
         guild = getattr(member, "guild", None)
         if guild is not None and guild.id in self._ids(cfg.get("disabled_guilds")):
+            return None
+        if guild is not None and not self.guild_allowed(guild):
             return None
         text_id = self.watch(cfg).get(new.id)
         if not text_id:
