@@ -11,7 +11,7 @@ Erzeugt aus dem Git-Tag (oder dem aktuellen Ordner, wenn kein Git da ist):
 
 Das Nutzerpaket enthält keine Tests und Entwicklerdateien, dafür ANLEITUNG.html
 (aus INSTALLATION.md, im BZi-Studio-Stil) und LIESMICH.txt.
-Benötigt nur für den Bau: pip install markdown
+Benötigt nur für den Bau: pip install markdown pillow
 """
 from __future__ import annotations
 
@@ -139,7 +139,7 @@ footer{{max-width:920px;margin:auto;padding:0 16px 40px;color:var(--text-2);font
 </head>
 <body>
 <header><div class="top">
-  <div class="logo" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="2.2"/><circle cx="12" cy="4.5" r="1.6"/><circle cx="19.5" cy="12" r="1.6"/><circle cx="12" cy="19.5" r="1.6"/><circle cx="4.5" cy="12" r="1.6"/><path d="M12 6.4v3.3M17.6 12h-3.3M12 17.6v-3.3M6.4 12h3.3"/></svg></div>
+  <div class="logo" aria-hidden="true" style="background:#000;overflow:hidden"><img src="{logo}" alt="" style="width:100%;height:100%;object-fit:cover"></div>
   <div><b>Cortex QuorumBot</b><span class="label">{doc} · {version}</span></div>
 </div></header>
 <main><article class="card">
@@ -173,7 +173,12 @@ def render_guide(md_text: str, version: str, doc: str = "Anleitung") -> str:
     body = markdown.markdown(md_text, extensions=["tables", "fenced_code", "sane_lists"])
     body = body.replace("<li>[ ] ", "<li>☐ ").replace("<li>[x] ", "<li>☑ ")
     body = re.sub(r'<a href="(https?://[^"]+)">', r'<a href="\1" target="_blank" rel="noopener">', body)
-    return HTML.format(version=html.escape(version), body=body, doc=html.escape(doc))
+    import base64
+    from PIL import Image
+    buf = io.BytesIO()
+    Image.open(ROOT / "assets" / "icon-256.png").resize((96, 96)).save(buf, "PNG", optimize=True)
+    logo = "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
+    return HTML.format(version=html.escape(version), body=body, doc=html.escape(doc), logo=logo)
 
 
 def write_zip(path: Path, files: dict[str, bytes], prefix: str):
